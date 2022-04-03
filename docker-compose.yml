@@ -9,7 +9,10 @@ services:
       - '--entrypoints.https.address=:443'
       - '--entrypoints.http.http.redirections.entrypoint.to=https'
       - '--entrypoints.http.http.redirections.entrypoint.scheme=https'
-      - '--certificatesresolvers.letsencrypt.acme.tlschallenge=true' # See note at the botton on the TLS-ALPN-01 challenge
+      # The auth headers get dropped even when the auth middleware is not mapped
+      - '--entrypoints.https.http.middlewares=drop-auth-headers@docker'
+      # See note at the botton on the TLS-ALPN-01 challenge
+      - '--certificatesresolvers.letsencrypt.acme.tlschallenge=true'
       - '--certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}'
       - '--certificatesresolvers.letsencrypt.acme.storage=acme.json'
       - '--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory' # Remove in prod
@@ -32,6 +35,10 @@ services:
       - 'traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=https://auth.${DOMAIN}/'
       - 'traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true'
       - 'traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email'
+      - 'traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-User='
+      - 'traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Groups='
+      - 'traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Name='
+      - 'traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Email='
     healthcheck:
       disable: true
     environment:
