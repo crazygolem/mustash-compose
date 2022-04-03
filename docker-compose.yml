@@ -1,0 +1,117 @@
+services:
+
+  traefik:
+    image: traefik:v2.7
+    command:
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--entrypoints.http.address=:80'
+      - '--entrypoints.https.address=:443'
+      - '--entrypoints.http.http.redirections.entrypoint.to=https'
+      - '--entrypoints.http.http.redirections.entrypoint.scheme=https'
+      - '--certificatesresolvers.letsencrypt.acme.tlschallenge=true' # See note at the botton on the TLS-ALPN-01 challenge
+      - '--certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}'
+      - '--certificatesresolvers.letsencrypt.acme.storage=acme.json'
+      - '--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory' # Remove in prod
+    ports:
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  authelia:
+    image: authelia/authelia:4.34.6
+    restart: unless-stopped
+    command: ["--config", "/run/secrets/authelia-access-control.yml"]
+    expose:
+      - 9091
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.authelia.rule=Host(`auth.${DOMAIN}`)'
+      - 'traefik.http.routers.authelia.entrypoints=https'
+      - 'traefik.http.routers.authelia.tls.certresolver=letsencrypt'
+      - 'traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/verify?rd=https://auth.${DOMAIN}/'
+      - 'traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true'
+      - 'traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email'
+    healthcheck:
+      disable: true
+    environment:
+      TZ: Europe/Zurich
+      # If the file does not exist, authelia outputs an error, generates the
+      # file and then exits. Restarting the service then works fine.
+      AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH: /config/users.yml
+      AUTHELIA_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
+      AUTHELIA_NOTIFIER_SMTP_HOST: ${SMTP_HOST}
+      AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: /run/secrets/smtp-pass
+      AUTHELIA_NOTIFIER_SMTP_PORT: ${SMTP_PORT}
+      AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER}
+      AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
+      AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/authelia-storage-encryption-key
+      AUTHELIA_STORAGE_LOCAL_PATH: /config/storage.sqlite3
+    volumes:
+      - authelia-config:/config
+    secrets:
+      - smtp-pass
+      - authelia-access-control.yml
+      - authelia-jwt-secret
+      - authelia-storage-encryption-key
+
+  # TODO: Remove before going live
+  whoami:
+    image: "traefik/whoami"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN}`)"
+      - "traefik.http.routers.whoami.entrypoints=https"
+      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.whoami.middlewares=authelia@docker"
+
+
+volumes:
+  # Authelia's config needs to be persisted because it holds important data that
+  # cannot be recovered or regenerated: user's passwords (which they can change)
+  # and their 2FA configurations.
+  authelia-config:
+
+secrets:
+  # Ideally there should be a way to define the ac rules (e.g. required roles)
+  # at the service level using traefik annotations, but there doesn't seem to be
+  # a way to do that currently.
+  # On top of that authelia doesn't currently support defining ac rules using
+  # environment variables. The only way is to have them in a configuration file
+  # in the container.
+  # Mounting using secrets instead of a normal bind mount makes it a bit nicer
+  # on the original file on the host (e.g. no ownership change) and allows if
+  # needed to specify a different ownership in the container.
+  authelia-access-control.yml:
+    file: secrets/authelia/access-control.yml
+  authelia-jwt-secret:
+    file: secrets/authelia/jwt-secret
+  authelia-storage-encryption-key:
+    file: secrets/authelia/storage-encryption-key
+  smtp-pass:
+    file: secrets/smtp-pass
+
+
+# NOTE ON THE ACME TLS-ALPN-01 CHALLENGE
+#
+# If AAAA records are present for the host, letsencrypt will use it to perform
+# the challenge verification and won't try A records if the verification fails
+# due to an unreachable host. Combine this with the fact that docker does not
+# enable IPv6 by default, and this leads to very confusing results and unhelpful
+# errors.
+#
+# On top of that, if IPv6 is enabled in docker and not carefully configured,
+# each container can potentially get a public IPv6 address and become reachable
+# on any port from the outside world. In short: IPv6 in docker does not work the
+# same as IPv4, and in particular there is no NAT later protecting the
+# containers.
+#
+# So for now, the best course of action seem to be removing the AAAA records for
+# the host, handle letsencrypt certificates from outside of docker, or use
+# another challenge type (HTTP-01 works well from within docker, even with AAAA
+# records pointing to the host).
+#
+# See also:
+# - https://stackoverflow.com/q/66090810
+# - https://github.com/robbertkl/docker-ipv6nat
