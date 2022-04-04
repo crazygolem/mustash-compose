@@ -1,4 +1,5 @@
 set positional-arguments
+set dotenv-load
 
 @default:
     just --list
@@ -6,6 +7,9 @@ set positional-arguments
 # Execute arbitratry docker compose commands
 @dc +args:
     docker compose "$@"
+
+ps:
+    just dc ps
 
 # Add (or replace) a user in authelia, setting a random password.
 add-user login email name:
@@ -84,3 +88,10 @@ down:
 up:
     docker compose up -d --remove-orphans
     docker compose logs -f
+
+init:
+    just add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
+    just delete-user authelia # If there is no user left, authelia crashes
+
+volumes:
+    docker volume ls -q | grep "^$(just dc config | yq .name)_"

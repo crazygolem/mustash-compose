@@ -63,6 +63,36 @@ services:
       - authelia-jwt-secret
       - authelia-storage-encryption-key
 
+  navidrome:
+    image: deluan/navidrome:0.47.5
+    restart: unless-stopped
+    # It should be possible to use another user (e.g. 1000:100), but it's a huge
+    # PITA when starting the project from scratch: the navidrome-data volume is
+    # created with root permissions by default, and changing it is a drag:
+    # Either I have to do it manually before deploying the project, or I need a
+    # custom image to customize the permissions of the data directory, or one
+    # to customize the entrypoint to set things up and drop privileges...
+    # Bind mounts would work, but... yuk.
+    # https://github.com/moby/moby/issues/7198
+    user: root
+    expose:
+      - 4533
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`music.${DOMAIN}`)"
+      - "traefik.http.routers.navidrome.entrypoints=https"
+      - "traefik.http.routers.navidrome.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.navidrome.middlewares=authelia@docker"
+    environment:
+      # All requests come through traefik, and we cannot specify a hostname only
+      # an IP range, so we must trust all IPs (and it's safe in this setup).
+      ND_REVERSEPROXYWHITELIST: 0.0.0.0/0
+      # Listen kids, don't passwords like navidrome 🙄
+      ND_PASSWORDENCRYPTIONKEY: ${NAVIDROME_WTF}
+    volumes:
+      - navidrome-data:/data
+      - /srv/music:/music:ro
+
   # TODO: Remove before going live
   whoami:
     image: "traefik/whoami"
@@ -76,9 +106,10 @@ services:
 
 volumes:
   # Authelia's config needs to be persisted because it holds important data that
-  # cannot be recovered or regenerated: user's passwords (which they can change)
+  # cannot be recovered or regenerated: users' passwords (which they can change)
   # and their 2FA configurations.
   authelia-config:
+  navidrome-data:
 
 secrets:
   # Ideally there should be a way to define the ac rules (e.g. required roles)
