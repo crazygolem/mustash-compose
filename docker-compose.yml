@@ -66,15 +66,10 @@ services:
   navidrome:
     image: deluan/navidrome:0.47.5
     restart: unless-stopped
-    # It should be possible to use another user (e.g. 1000:100), but it's a huge
-    # PITA when starting the project from scratch: the navidrome-data volume is
-    # created with root permissions by default, and changing it is a drag:
-    # Either I have to do it manually before deploying the project, or I need a
-    # custom image to customize the permissions of the data directory, or one
-    # to customize the entrypoint to set things up and drop privileges...
-    # Bind mounts would work, but... yuk.
-    # https://github.com/moby/moby/issues/7198
-    user: root
+    user: 1000:1000
+    depends_on:
+      # Only actually needed when deploying from scratch, but what you gonna do
+      - navidrome-init
     expose:
       - 4533
     labels:
@@ -92,6 +87,13 @@ services:
     volumes:
       - navidrome-data:/data
       - /srv/music:/music:ro
+
+  # Set the right ownership on a freshly created navidrome-data volume
+  navidrome-init:
+    image: alpine:latest
+    command: sh -c 'if [ -z "$$(ls -A /data)" ]; then chown 1000:1000 /data; fi'
+    volumes:
+      - navidrome-data:/data
 
   # TODO: Remove before going live
   whoami:

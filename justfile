@@ -90,8 +90,9 @@ up:
     docker compose logs -f
 
 init:
+    # If there is no user left, authelia crashes
     just add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
-    just delete-user authelia # If there is no user left, authelia crashes
+    just delete-user authelia
 
 volumes:
-    docker volume ls -q | grep "^$(just dc config | yq .name)_"
+    docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
