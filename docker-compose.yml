@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v2.7
+    image: traefik:${TRAEFIK_VERSION}
     command:
       - '--providers.docker=true'
       - '--providers.docker.exposedbydefault=false'
@@ -15,14 +15,14 @@ services:
       - '--certificatesresolvers.letsencrypt.acme.tlschallenge=true'
       - '--certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}'
       - '--certificatesresolvers.letsencrypt.acme.storage=acme.json'
-      - '--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory' # Remove in prod
+      - '--certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory' # TODO: Remove in prod
     ports:
       - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   authelia:
-    image: authelia/authelia:4.34.6
+    image: authelia/authelia:${AUTHELIA_VERSION}
     restart: unless-stopped
     command: ["--config", "/run/secrets/authelia-access-control.yml"]
     expose:
@@ -64,12 +64,13 @@ services:
       - authelia-storage-encryption-key
 
   navidrome:
-    image: deluan/navidrome:0.47.5
+    image: deluan/navidrome:${NAVIDROME_VERSION}
     restart: unless-stopped
     user: 1000:1000
     depends_on:
       # Only actually needed when deploying from scratch, but what you gonna do
-      - navidrome-init
+      user-volumes:
+        condition: service_completed_successfully
     expose:
       - 4533
     labels:
@@ -88,13 +89,6 @@ services:
       - navidrome-data:/data
       - /srv/music:/music:ro
 
-  # Set the right ownership on a freshly created navidrome-data volume
-  navidrome-init:
-    image: alpine:latest
-    command: sh -c 'if [ -z "$$(ls -A /data)" ]; then chown 1000:1000 /data; fi'
-    volumes:
-      - navidrome-data:/data
-
   # TODO: Remove before going live
   whoami:
     image: "traefik/whoami"
@@ -104,6 +98,15 @@ services:
       - "traefik.http.routers.whoami.entrypoints=https"
       - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
       - "traefik.http.routers.whoami.middlewares=authelia@docker"
+
+  # Set the ownership of freshly created volumes because docker doesn't provide
+  # this feature essential to non-root containers, and compose didn't find it
+  # judicious to palliate that 🙄
+  user-volumes:
+    build:
+      context: images/user-volumes
+    volumes:
+      - navidrome-data:/mnt/navidrome-data
 
 
 volumes:

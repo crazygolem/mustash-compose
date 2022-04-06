@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Set the ownership of all empty directories mounted under /mnt.
+#
+# This is meant to palliate docker/compose's lack of ability to allow specifying
+# the owner of volumes it creates (a feature essential to using volumes with
+# non-root containers).
+#
+# CONFIGURATION
+#
+# The ownership is optionally configured through environment variables: PUID and
+# PGID for resp. the user and group. They both default to 1000, which seems to
+# be a fairly widespread convention for non-root containers.
+#
+# In addition, the user and group can be specified for individual volumes using
+# environment variables. Their name start with resp. PUID_ and PGID_, followed
+# by the mounted directory's name uppercased, and with all characters except for
+# letters and numbers replaced by an underscore.
+#
+
+set -eo pipefail
+shopt -s nullglob
+
+for path in /mnt/*; do
+    vol="$(basename "$path")"
+    var="$(printf '%s' "$vol" | tr '[:lower:]' '[:upper:]' | tr -c '[A-Z0-9]' _)"
+
+    declare -n uid="PUID_${var}"
+    declare -n gid="PGID_${var}"
+
+    uid="${uid:-${PUID:-1000}}"
+    gid="${gid:-${PGID:-1000}}"
+
+    if [ -z "$(ls -A "$path")" ]; then
+        printf '%d:%d\t%s\n' "$uid" "$gid" "$vol"
+        chown "${uid}:${gid}" "$path"
+    else
+        printf '%s\t%s\n' "(not empty)" "$vol"
+    fi
+done
+
+exec "$@"

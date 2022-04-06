@@ -89,7 +89,10 @@ up:
     docker compose up -d --remove-orphans
     docker compose logs -f
 
-init:
+bootstrap: && up
+    docker compose build
+    docker compose up -d --remove-orphans authelia
+    sleep 2
     # If there is no user left, authelia crashes
     just add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
     just delete-user authelia
