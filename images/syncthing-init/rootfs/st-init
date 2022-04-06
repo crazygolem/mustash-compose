@@ -1,0 +1,182 @@
+#!/bin/bash
+#
+# Initializes syncthing with configs appropriate for the target environment (a
+# docker-compose setup on a server somewhere on the intertubes), and then start
+# it.
+#
+# Ideally the configs set here should not be changeable by users from the GUI,
+# but syncthing doesn't allow to lock down most of them.
+#
+# So instead we just reset all the managed settings as if they were not part of
+# syncthing's persisted state.
+#
+
+set -eo pipefail
+
+export STHOME="${1:?Missing config directory}"
+
+
+### environment ################################################################
+
+# All managed environment variables should allow getting their value from files.
+USER_VARS=(
+    GLOBAL_ANNOUNCE_ENABLED
+    GUI_ADDRESS
+    GUI_ENABLED
+    GUI_PASSWORD
+    GUI_UNPROTECTED
+    GUI_USER
+    SYNC_PORT
+)
+
+# Spelled-out switches look nicer in the compose file, but it's easier to handle
+# 0/empty and 1 in bash.
+FLAG_VARS=(
+    GLOBAL_ANNOUNCE_ENABLED
+    GUI_ENABLED
+    GUI_UNPROTECTED
+)
+
+for varname in ${USER_VARS[@]}; do
+    declare -n src="${varname}__FILE"
+    declare -n tgt="$varname"
+
+    if [ -z "${tgt+isset}" ] && [ -f "$src" ]; then
+        export tgt="$(cat "$src")"
+    fi
+done
+
+for varname in ${FLAG_VARS[@]}; do
+    declare -n var="${varname}"
+
+    case "$var" in
+        true|yes) var=1 ;;
+        false|no) var=0 ;;
+    esac
+done
+
+
+### utility functions ##########################################################
+
+stcli() {
+    syncthing cli --home "$STHOME" "$@"
+}
+export -f stcli
+
+# Escapes (quotes) each argument, then outputs them separated by a space
+q() {
+    while (( $# )); do
+        printf '%q' "$1"
+        shift
+        if (( $# )); then
+            printf ' '
+        fi
+    done
+}
+export -f q
+
+# Applies syncthing configurations, parsing a mini configuration language
+config() {
+    sed -E 's/\s*#.*//' \
+    | xargs -r -L1 -- bash -c '
+        set -eo pipefail
+
+        op="$1"; shift
+        case "$op" in
+        =)  # set value
+            stcli config "${@:1:$#-1}" set "${@: -1}"
+            ;;
+        \+) # append value to list
+            stcli config "${@:1:$#-1}" add "${@: -1}"
+            ;;
+        z)  # clear list
+            for i in $(
+                stcli config "$@" list
+            ); do
+                stcli config "$@" 0 delete
+            done
+            ;;
+        esac
+
+        # If too fast, the next cli command might fail.
+        sleep 0.2
+    ' -
+}
+export -f config
+
+
+### (re-)initialization ########################################################
+
+initargs=(
+    --home "$STHOME"
+    --gui-address 127.0.0.1:8384    # Only during initialization (note: outputs
+                                    #   misleading messages during init)
+
+    --no-browser
+    --no-restart                    # Managed by docker-compose
+    --no-upgrade                    # Upgrade the docker image instead
+
+    --skip-port-probing
+    --no-default-folder
+)
+
+# Start an instance that will be used by the syncthing cli client to modify its
+# own configuration
+syncthing serve "${initargs[@]}" &
+
+# Allow some time for the server to be ready
+for i in $(seq 20 -1 0); do
+    if ! (( i )); then
+        >&2 echo "Syncthing server timeout, aborting init"
+        exit 1
+    fi
+    sleep 0.2
+    if stcli config version get >/dev/null 2>&1; then
+        break
+    fi
+done
+
+cat <<EOF | config
+# Overwrites the default "default" value; we want "default" but with custom
+# ports and without relays (by default peers connect with the domain name)
+z options raw-listen-addresses
++ options raw-listen-addresses      tcp://:$(q "${SYNC_PORT:-22000}")
++ options raw-listen-addresses      quic://:$(q "${SYNC_PORT:-22000}")
+
+= options local-ann-enabled         false           # Server setup, no local devices
+= options global-ann-enabled        false           # Peers connect with the domain name
+= options start-browser             false
+= options natenabled                false           # Server with public IP address
+= options auto-upgrade-intervalh    0               # Docker setup, should upgrade the image instead (disabled
+                                                    #   anyway in the upstream build, it's here just in case)
+= defaults folder path              /data
+= defaults folder ignore-perms      true
+
+= gui raw-address                   127.0.0.1:8384  # Unreachable from outside unless explicitly enabled
+EOF
+
+if (( GLOBAL_ANNOUNCE_ENABLED )); then
+    cat <<-EOF | config
+    # Same as with the 'default' value (at the time this script was written).
+    # Cannot be replaced with just 'default' as the port might be custom.
+    + options raw-listen-addresses  dynamic+https://relays.syncthing.net/endpoint
+    = options global-ann-enabled    true
+	EOF
+fi
+
+# Leaving the GUI unprotected requires an affirmative step
+if (( GUI_ENABLED )) && ! (( GUI_UNPROTECTED )); then
+    cat <<-EOF | config
+    = gui user                      $(q "${GUI_USER:?}")
+    = gui password                  $(q "${GUI_PASSWORD:?}")
+	EOF
+fi
+
+if (( GUI_ENABLED )); then
+    cat <<-EOF | config
+    = gui raw-address               0.0.0.0:8384
+	EOF
+fi
+
+stcli operations shutdown
+wait

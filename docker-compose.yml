@@ -89,6 +89,43 @@ services:
       - navidrome-data:/data
       - /srv/music:/music:ro
 
+  syncthing:
+    image: syncthing/syncthing:${SYNCTHING_VERSION}
+    restart: unless-stopped
+    user: 1000:1000
+    depends_on:
+      syncthing-init:
+        condition: service_completed_successfully
+    expose:
+      - 8384 # Web UI, through traefik
+    ports:
+      - 22000:22000/tcp # TCP file transfers
+      - 22000:22000/udp # QUIC file transfers
+      #- 21027:21027/udp # Receive local discovery broadcasts
+    volumes:
+      - syncthing-config:/var/syncthing/config
+
+  syncthing-init:
+    build:
+      context: images/syncthing-init
+      args:
+        syncthing_version: ${SYNCTHING_VERSION}
+    image: syncthing-init:${SYNCTHING_VERSION}
+    user: 1000:1000
+    depends_on:
+      # If run as root, the entrypoint only sets the ownership of the HOME
+      # directory, not the actual config directory below it.
+      user-volumes:
+        condition: service_completed_successfully
+    environment:
+      # The GUI is behind authelia and we hope it works (there is no way to
+      # make syncthing verify this currently).
+      GUI_ENABLED: true
+      GUI_UNPROTECTED: true
+    volumes:
+      - syncthing-home:/var/syncthing
+      - syncthing-config:/var/syncthing/config
+
   # TODO: Remove before going live
   whoami:
     image: "traefik/whoami"
@@ -107,6 +144,8 @@ services:
       context: images/user-volumes
     volumes:
       - navidrome-data:/mnt/navidrome-data
+      - syncthing-config:/mnt/syncthing-config
+      - syncthing-home:/mnt/syncthing-home
 
 
 volumes:
@@ -115,6 +154,8 @@ volumes:
   # and their 2FA configurations.
   authelia-config:
   navidrome-data:
+  syncthing-config:
+  syncthing-home:
 
 secrets:
   # Ideally there should be a way to define the ac rules (e.g. required roles)
