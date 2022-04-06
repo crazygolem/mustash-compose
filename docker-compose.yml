@@ -104,6 +104,7 @@ services:
       #- 21027:21027/udp # Receive local discovery broadcasts
     volumes:
       - syncthing-config:/var/syncthing/config
+      # TODO: Mount music share
 
   syncthing-init:
     build:

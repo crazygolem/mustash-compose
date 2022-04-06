@@ -59,7 +59,21 @@ done
 ### utility functions ##########################################################
 
 stcli() {
-    syncthing cli --home "$STHOME" "$@"
+    # GUI changes makes the server hang for 15-20 seconds, so we allow a failure
+    # timeout to work around this.
+    # https://github.com/syncthing/syncthing/issues/8255#issue-1195300842
+    local timeout start now
+    timeout=30
+    start="$(date +%s)"
+
+    until syncthing cli --home "$STHOME" "$@"; do
+        now="$(date +%s)"
+        if (( start + timeout < now )); then
+            >&2 echo "Syncthing server timeout, aborting init"
+            exit 1
+        fi
+        sleep 1
+    done
 }
 export -f stcli
 
@@ -97,9 +111,6 @@ config() {
             done
             ;;
         esac
-
-        # If too fast, the next cli command might fail.
-        sleep 0.2
     ' -
 }
 export -f config
@@ -125,16 +136,7 @@ initargs=(
 syncthing serve "${initargs[@]}" &
 
 # Allow some time for the server to be ready
-for i in $(seq 20 -1 0); do
-    if ! (( i )); then
-        >&2 echo "Syncthing server timeout, aborting init"
-        exit 1
-    fi
-    sleep 0.2
-    if stcli config version get >/dev/null 2>&1; then
-        break
-    fi
-done
+stcli config version get >/dev/null 2>&1
 
 cat <<EOF | config
 # Overwrites the default "default" value; we want "default" but with custom
@@ -177,6 +179,8 @@ if (( GUI_ENABLED )); then
     = gui raw-address               0.0.0.0:8384
 	EOF
 fi
+
+echo "That's all Folks!"
 
 stcli operations shutdown
 wait
