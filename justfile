@@ -98,7 +98,7 @@ bootstrap: (dc "build") && up
         echo -n .; sleep 0.2; done; echo
     just _delete-user authelia
     just _add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
-    just dc stop authelia
+    just dc restart authelia
 
 volumes:
     docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
