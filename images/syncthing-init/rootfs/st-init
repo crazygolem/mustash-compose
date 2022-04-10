@@ -13,7 +13,8 @@
 
 set -eo pipefail
 
-export STHOME="${1:?Missing config directory}"
+STHOME="${1:?Missing config directory}"
+STAPIKEY="$(cat /proc/sys/kernel/random/uuid)"
 
 
 ### environment ################################################################
@@ -37,7 +38,7 @@ FLAG_VARS=(
     GUI_UNPROTECTED
 )
 
-for varname in ${USER_VARS[@]}; do
+for varname in "${USER_VARS[@]}"; do
     declare -n src="${varname}__FILE"
     declare -n tgt="$varname"
 
@@ -46,7 +47,7 @@ for varname in ${USER_VARS[@]}; do
     fi
 done
 
-for varname in ${FLAG_VARS[@]}; do
+for varname in "${FLAG_VARS[@]}"; do
     declare -n var="${varname}"
 
     case "$var" in
@@ -58,10 +59,11 @@ done
 
 ### utility functions ##########################################################
 
+# Retrying wrapper for 'syncthing cli'
 stcli() {
     # GUI changes makes the server hang for 15-20 seconds, so we allow a failure
     # timeout to work around this.
-    # https://github.com/syncthing/syncthing/issues/8255#issue-1195300842
+    # https://github.com/syncthing/syncthing/issues/8255
     local timeout start now
     timeout=30
     start="$(date +%s)"
@@ -75,7 +77,11 @@ stcli() {
         sleep 1
     done
 }
-export -f stcli
+
+# Call syncthing's REST endpoints
+strest() {
+    curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/"${1#/}" "${@:2}"
+}
 
 # Escapes (quotes) each argument, then outputs them separated by a space
 q() {
@@ -87,58 +93,80 @@ q() {
         fi
     done
 }
-export -f q
 
-# Applies syncthing configurations, parsing a mini configuration language
-config() {
-    sed -E 's/\s*#.*//' \
-    | xargs -r -L1 -- bash -c '
-        set -eo pipefail
-
-        op="$1"; shift
-        case "$op" in
-        =)  # set value
-            stcli config "${@:1:$#-1}" set "${@: -1}"
-            ;;
-        \+) # append value to list
-            stcli config "${@:1:$#-1}" add "${@: -1}"
-            ;;
-        z)  # clear list
-            for i in $(
-                stcli config "$@" list
-            ); do
-                stcli config "$@" 0 delete
-            done
-            ;;
-        esac
-    ' -
+# Set the global variable specified as first argument to the content of stdin
+into() {
+    declare -gn var="${1:?Missing VAR}"
+    if (( ${#var} )); then
+        var+=$'\n'
+    fi
+    var+="$(cat)"
 }
-export -f config
 
+# Convert a shell string to a JSON string
+jsonstr() {
+    sed -E -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/^|$/"/g'
+}
+export -f jsonstr # Export needed for use in 'xargs bash'
+
+# Transforms a list of arguments to a JSON array suitable for jq's PATHS args
+aspath() {
+    local k keys str
+    for k in "$@"; do
+        keys+=("$(echo "$k" | jsonstr)")
+    done
+    printf -v str -- ", %s" "${keys[@]}"
+    echo "[${str:2}]"
+}
+export -f aspath # Export needed for use in 'xargs bash'
+
+# Apply a single transformation to stdin's JSON specified by the arguments.
+apply() {
+    local op
+
+    op="$1"; shift
+    case "$op" in
+    =)  # set value
+        jq \
+            --argjson path "$(aspath "${@:1:$#-1}")" \
+            --arg value "${@: -1}" \
+            'setpath($path; $value)'
+        ;;
+    z)  # clear list
+        jq \
+            --argjson path "$(aspath "$@")" \
+            'setpath($path; [])'
+        ;;
+    \+) # append to list
+        jq \
+            --argjson path "$(aspath "${@:1:$#-1}")" \
+            --arg value "${@: -1}" \
+            'setpath($path; getpath($path) + [$value])'
+        ;;
+    esac
+}
+export -f apply # Export needed for use in 'xargs bash'
+
+# Transforms a JSON from stdin using several instructions from the configuration
+# mini language.
+config() {
+    local configscript
+
+    # Remove comments and trailing spaces (special meaning for xargs)
+    # Note: Comments removal is dumb, doens't handle '#' inside strings
+    configscript="$(
+        echo "${1:?}" \
+        | sed -E 's/\s*#.*$//' \
+        | xargs -L1 bash -c 'printf " %q" "$@"; echo' -
+    )"
+
+    # Apply each command from configscript in turn to stdin (syncthing's config)
+    xargs -L1 -a <(echo "$configscript") -- bash -c 'apply "$@"' -
+}
 
 ### (re-)initialization ########################################################
 
-initargs=(
-    --home "$STHOME"
-    --gui-address 127.0.0.1:8384    # Only during initialization (note: outputs
-                                    #   misleading messages during init)
-
-    --no-browser
-    --no-restart                    # Managed by docker-compose
-    --no-upgrade                    # Upgrade the docker image instead
-
-    --skip-port-probing
-    --no-default-folder
-)
-
-# Start an instance that will be used by the syncthing cli client to modify its
-# own configuration
-syncthing serve "${initargs[@]}" &
-
-# Allow some time for the server to be ready
-stcli config version get >/dev/null 2>&1
-
-cat <<EOF | config
+into CONFIG <<EOF
 # Overwrites the default "default" value; we want "default" but with custom
 # ports and without relays (by default peers connect with the domain name)
 z options raw-listen-addresses
@@ -158,7 +186,7 @@ z options raw-listen-addresses
 EOF
 
 if (( GLOBAL_ANNOUNCE_ENABLED )); then
-    cat <<-EOF | config
+    into CONFIG <<-EOF
     # Same as with the 'default' value (at the time this script was written).
     # Cannot be replaced with just 'default' as the port might be custom.
     + options raw-listen-addresses  dynamic+https://relays.syncthing.net/endpoint
@@ -168,17 +196,43 @@ fi
 
 # Leaving the GUI unprotected requires an affirmative step
 if (( GUI_ENABLED )) && ! (( GUI_UNPROTECTED )); then
-    cat <<-EOF | config
+    into CONFIG <<-EOF
     = gui user                      $(q "${GUI_USER:?}")
     = gui password                  $(q "${GUI_PASSWORD:?}")
 	EOF
 fi
 
 if (( GUI_ENABLED )); then
-    cat <<-EOF | config
+    into CONFIG <<-EOF
     = gui raw-address               0.0.0.0:8384
 	EOF
 fi
+
+
+initargs=(
+    --home "$STHOME"
+
+    # Overridden only during initialization (note: log outputs are misleading)
+    --gui-address 127.0.0.1:8384
+    --gui-apikey "$STAPIKEY"
+
+    --no-browser
+    --no-restart                    # Managed by docker-compose
+    --no-upgrade                    # Upgrade the docker image instead
+
+    --skip-port-probing
+    --no-default-folder
+)
+
+# Start an instance that will be used to modify its own configuration
+syncthing serve "${initargs[@]}" &
+
+# Allow some time for the server to be ready
+stcli config version get >/dev/null 2>&2
+
+curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config \
+| config "$CONFIG" \
+| curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config -X PUT -d @-
 
 echo "That's all Folks!"
 
