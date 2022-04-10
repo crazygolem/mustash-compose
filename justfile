@@ -94,11 +94,11 @@ up:
 
 bootstrap: (dc "build") && up
     just dc up -d --remove-orphans authelia
-    while ! just dc exec authelia test -f /config/users.yml; do \
+    while ! { just dc exec authelia wget -qO - http://localhost:9091/api/health | grep OK; } >/dev/null 2>&1; do \
         echo -n .; sleep 0.2; done; echo
     just _delete-user authelia
     just _add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
-    just dc restart authelia
+    just dc stop authelia
 
 volumes:
     docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
