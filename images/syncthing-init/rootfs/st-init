@@ -22,7 +22,6 @@ STAPIKEY="$(cat /proc/sys/kernel/random/uuid)"
 # All managed environment variables should allow getting their value from files.
 USER_VARS=(
     GLOBAL_ANNOUNCE_ENABLED
-    GUI_ADDRESS
     GUI_ENABLED
     GUI_PASSWORD
     GUI_UNPROTECTED
@@ -41,9 +40,10 @@ FLAG_VARS=(
 for varname in "${USER_VARS[@]}"; do
     declare -n src="${varname}__FILE"
     declare -n tgt="$varname"
+    export tgt
 
     if [ -z "${tgt+isset}" ] && [ -f "$src" ]; then
-        export tgt="$(cat "$src")"
+        tgt="$(cat "$src")"
     fi
 done
 
