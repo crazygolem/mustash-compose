@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Initializes syncthing with configs appropriate for the target environment (a
-# docker-compose setup on a server somewhere on the intertubes), and then start
+# docker-compose setup on a server somewhere on the intertubes), and then starts
 # it.
 #
 # Ideally the configs set here should not be changeable by users from the GUI,
@@ -209,6 +209,8 @@ if (( GUI_ENABLED )); then
 fi
 
 
+echo "Configuring syncthing..."
+
 initargs=(
     --home "$STHOME"
 
@@ -234,7 +236,10 @@ curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config \
 | config "$CONFIG" \
 | curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config -X PUT -d @-
 
-echo "That's all Folks!"
+echo "Configuration done, restarting..."
 
 stcli operations shutdown
 wait
+
+# Start syncthing for normal operations
+syncthing serve --home "$STHOME"
