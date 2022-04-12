@@ -176,9 +176,9 @@ z options raw-listen-addresses
 = options local-ann-enabled         false           # Server setup, no local devices
 = options global-ann-enabled        false           # Peers connect with the domain name
 = options start-browser             false
-= options natenabled                false           # Server with public IP address
-= options auto-upgrade-intervalh    0               # Docker setup, should upgrade the image instead (disabled
-                                                    #   anyway in the upstream build, it's here just in case)
+= options natenabled                false           # Disables uPNP and NAT-PMP, the external IP is still correctly resolved
+= options auto-upgrade-intervalh    0               # Docker setup, should upgrade the image instead (disabled in upstream's build anyway)
+
 = defaults folder path              /data
 = defaults folder ignore-perms      true
 
@@ -236,10 +236,10 @@ curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config \
 | config "$CONFIG" \
 | curl -sS -H "X-API-Key: $STAPIKEY" localhost:8384/rest/config -X PUT -d @-
 
-echo "Configuration done, restarting..."
-
 stcli operations shutdown
 wait
+
+echo "Configuration done, restarting..."
 
 # Start syncthing for normal operations
 syncthing serve --home "$STHOME"

@@ -118,6 +118,12 @@ services:
         condition: service_completed_successfully
     expose:
       - 8384 # Web UI, through traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.navidrome.rule=Host(`syncthing.${DOMAIN}`)"
+      - "traefik.http.routers.navidrome.entrypoints=https"
+      - "traefik.http.routers.navidrome.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.navidrome.middlewares=authelia@docker"
     ports:
       - 22000:22000/tcp # TCP file transfers
       - 22000:22000/udp # QUIC file transfers
