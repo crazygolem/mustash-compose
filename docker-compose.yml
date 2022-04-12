@@ -26,6 +26,9 @@ services:
     image: authelia/authelia:${AUTHELIA_VERSION}
     restart: unless-stopped
     command: ["--config", "/run/secrets/authelia-access-control.yml"]
+    depends_on:
+      authelia-cache:
+        condition: service_started
     expose:
       - 9091
     labels:
@@ -54,6 +57,9 @@ services:
       AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER}
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
       AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
+      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
+      AUTHELIA_SESSION_REDIS_HOST: authelia-cache
+      AUTHELIA_SESSION_REDIS_PORT: 6379
       AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/authelia-storage-encryption-key
       AUTHELIA_STORAGE_LOCAL_PATH: /config/storage.sqlite3
     volumes:
@@ -62,7 +68,14 @@ services:
       - smtp-pass
       - authelia-access-control.yml
       - authelia-jwt-secret
+      - authelia-session-secret
       - authelia-storage-encryption-key
+
+  authelia-cache:
+    image: redis:6.2-alpine
+    restart: unless-stopped
+    volumes:
+      - authelia-cache:/data
 
   navidrome:
     image: deluan/navidrome:${NAVIDROME_VERSION}
@@ -143,6 +156,7 @@ volumes:
   # cannot be recovered or regenerated: users' passwords (which they can change)
   # and their 2FA configurations.
   authelia-config:
+  authelia-cache:
   navidrome-data:
   syncthing-config:
 
@@ -160,6 +174,8 @@ secrets:
     file: secrets/authelia/access-control.yml
   authelia-jwt-secret:
     file: secrets/authelia/jwt-secret
+  authelia-session-secret:
+    file: secrets/authelia/session-secret
   authelia-storage-encryption-key:
     file: secrets/authelia/storage-encryption-key
   smtp-pass:
