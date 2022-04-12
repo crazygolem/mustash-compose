@@ -136,16 +136,6 @@ services:
       - syncthing-config:/var/syncthing/config
       # TODO: Mount music share
 
-  # TODO: Remove before going live
-  whoami:
-    image: "traefik/whoami"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN}`)"
-      - "traefik.http.routers.whoami.entrypoints=https"
-      - "traefik.http.routers.whoami.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.whoami.middlewares=authelia@docker"
-
   # Set the ownership of freshly created volumes because docker doesn't provide
   # this feature essential to non-root containers, and compose didn't find it
   # judicious to palliate that 🙄
