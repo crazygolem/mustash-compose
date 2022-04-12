@@ -23,7 +23,7 @@ shopt -s nullglob
 
 for path in /mnt/*; do
     vol="$(basename "$path")"
-    var="$(printf '%s' "$vol" | tr '[:lower:]' '[:upper:]' | tr -c '[A-Z0-9]' _)"
+    var="$(printf '%s' "${vol^^}" | tr -c A-Z0-9 _)"
 
     declare -n uid="PUID_${var}"
     declare -n gid="PGID_${var}"
