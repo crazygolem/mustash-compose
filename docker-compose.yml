@@ -131,10 +131,9 @@ services:
       - 22000:22000/tcp # TCP file transfers
       - 22000:22000/udp # QUIC file transfers
     environment:
-      # The GUI is behind authelia and we hope it works (there is no way to
-      # make syncthing verify this currently).
       GUI_ENABLED: true
-      GUI_UNPROTECTED: true
+      GUI_UNPROTECTED: true # The GUI is behind authelia and hopefully it works
+      INSTANCE_NAME: ${DOMAIN}
     volumes:
       - syncthing-config:/var/syncthing/config
       # TODO: Mount music share

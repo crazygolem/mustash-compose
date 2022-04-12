@@ -34,11 +34,8 @@ ENTRYPOINT ["/bin/entrypoint.sh", "/syncthing-start", "/var/syncthing/config"]
 
 RUN apk --no-cache add \
     bash \
-    curl \
     # Provides GNU xargs, which supports the -L option (unlike Busybox')
     findutils \
-    jq \
-    # I don't want to figure out the hard way why Busybox' sed borks
-    sed
+    jq
 
 COPY ./rootfs /

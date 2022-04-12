@@ -27,6 +27,7 @@ USER_VARS=(
     GUI_PASSWORD
     GUI_UNPROTECTED
     GUI_USER
+    INSTANCE_NAME
     SYNC_PORT
 )
 
@@ -159,41 +160,55 @@ config <<EOF
 # Overwrites the default "default" value; we want "default" but with custom
 # ports and without relays (by default peers connect with the domain name)
 z options raw-listen-addresses
-+ options raw-listen-addresses      tcp://:$(q "${SYNC_PORT:-22000}")
-+ options raw-listen-addresses      quic://:$(q "${SYNC_PORT:-22000}")
++ options raw-listen-addresses          tcp://:$(q "${SYNC_PORT:-22000}")
++ options raw-listen-addresses          quic://:$(q "${SYNC_PORT:-22000}")
 
-= options local-ann-enabled         false           # Server setup, no local devices
-= options global-ann-enabled        false           # Peers connect with the domain name
-= options start-browser             false
-= options natenabled                false           # Disables uPNP and NAT-PMP, the external IP is still correctly resolved
-= options auto-upgrade-intervalh    0               # Docker setup, should upgrade the image instead (disabled in upstream's build anyway)
+= options local-ann-enabled             false           # Server setup, no local devices
+= options global-ann-enabled            false           # Peers connect with the domain name
+= options start-browser                 false
+= options natenabled                    false           # Disables uPNP and NAT-PMP, the external IP is still correctly resolved
+= options auto-upgrade-intervalh        0               # Docker setup, should upgrade the image instead (disabled in upstream's build anyway)
 
-= defaults folder path              /data
-= defaults folder ignore-perms      true
+= defaults folder path                  /data
+= defaults folder ignore-perms          true
 
-= gui raw-address                   127.0.0.1:8384  # Unreachable from outside unless explicitly enabled
+= gui raw-address                       127.0.0.1:8384  # Unreachable from outside unless explicitly enabled
 EOF
 
 if (( GLOBAL_ANNOUNCE_ENABLED )); then
     config <<-EOF
     # Same as with the 'default' value (at the time this script was written).
     # Cannot be replaced with just 'default' as the port might be custom.
-    + options raw-listen-addresses  dynamic+https://relays.syncthing.net/endpoint
-    = options global-ann-enabled    true
+    + options raw-listen-addresses      dynamic+https://relays.syncthing.net/endpoint
+    = options global-ann-enabled        true
 	EOF
 fi
 
-# Leaving the GUI unprotected requires an affirmative step
-if (( GUI_ENABLED )) && ! (( GUI_UNPROTECTED )); then
+if [ -n "$INSTANCE_NAME" ]; then
+    instance_id="$(stcli show system | jq -r .myID)"
     config <<-EOF
-    = gui user                      $(q "${GUI_USER:?}")
-    = gui password                  $(q "${GUI_PASSWORD:?}")
+    = devices $(q "$instance_id") name  $(q "$INSTANCE_NAME")
 	EOF
 fi
 
 if (( GUI_ENABLED )); then
+    # Leaving the GUI unprotected requires an affirmative step.
+    # Note: Even when setting this option, an "Insecure admin access is enabled"
+    # notification shows up after every restart. There is no way to disable
+    # this, cf. https://forum.syncthing.net/t/insecure-admin-access/6374
+    if (( GUI_UNPROTECTED )); then
+        config <<-EOF
+        = gui insecure-admin-access     true
+		EOF
+    else
+        config <<-EOF
+        = gui user                      $(q "${GUI_USER:?}")
+        = gui password                  $(q "${GUI_PASSWORD:?}")
+		EOF
+    fi
+
     config <<-EOF
-    = gui raw-address               0.0.0.0:8384
+    = gui raw-address                   0.0.0.0:8384
 	EOF
 fi
 
