@@ -12,7 +12,7 @@ ARG syncthing_version
 # [1]: https://github.com/syncthing/syncthing/blob/main/Dockerfile
 
 FROM syncthing/syncthing:${syncthing_version} AS upstream
-FROM alpine
+FROM alpine:latest
 
 EXPOSE 8384 22000/tcp 22000/udp 21027/udp
 
@@ -21,12 +21,13 @@ RUN apk --no-cache add \
     su-exec \
     tzdata
 
-COPY --from=upstream /bin/syncthing /bin/entrypoint.sh /bin/
+COPY --from=upstream \
+    /bin/syncthing /bin/entrypoint.sh /bin/
 
 ENV PUID=1000 PGID=1000 HOME=/var/syncthing
 
 HEALTHCHECK --interval=1m --timeout=10s \
-  CMD nc -z 127.0.0.1 8384 || exit 1
+    CMD nc -z 127.0.0.1 8384 || exit 1
 
 ### such custom ################################################################
 

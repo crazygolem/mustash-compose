@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:${TRAEFIK_VERSION}
+    image: traefik:v2.7
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -24,7 +24,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   authelia:
-    image: authelia/authelia:${AUTHELIA_VERSION}
+    image: authelia/authelia:4.34.6
     restart: unless-stopped
     command:
       - --config
@@ -57,7 +57,7 @@ services:
       AUTHELIA_NOTIFIER_SMTP_HOST: ${SMTP_HOST}
       AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: /run/secrets/smtp-pass
       AUTHELIA_NOTIFIER_SMTP_PORT: ${SMTP_PORT}
-      AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER}
+      AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER_NAME} <${SYSTEM_MAIL_SENDER_ADDR}>
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
       AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
       AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
@@ -81,7 +81,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:${NAVIDROME_VERSION}
+    image: deluan/navidrome:0.47.5
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -110,8 +110,8 @@ services:
     build:
       context: images/stash-syncthing
       args:
-        syncthing_version: ${SYNCTHING_VERSION}
-    image: stash-syncthing:${SYNCTHING_VERSION}
+        syncthing_version: 1.19.2
+    image: stash-syncthing:1.19.2
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -138,6 +138,31 @@ services:
       - syncthing-config:/var/syncthing/config
       # TODO: Mount music share
 
+  diun:
+    image: crazymax/diun:4.21
+    command: serve
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Zurich
+      DIUN_PROVIDERS_DOCKER: true
+      DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT: true
+      DIUN_PROVIDERS_DOCKER_WATCHSTOPPED: true
+      DIUN_PROVIDERS_DOCKERFILE_PATTERNS: /images/**/Dockerfile*
+      DIUN_WATCH_SCHEDULE: 20 2 * * THU
+      DIUN_NOTIF_MAIL_HOST: ${SMTP_HOST}
+      DIUN_NOTIF_MAIL_PORT: ${SMTP_PORT}
+      DIUN_NOTIF_MAIL_USERNAME: ${SMTP_USER}
+      DIUN_NOTIF_MAIL_PASSWORDFILE: /run/secrets/smtp-pass
+      DIUN_NOTIF_MAIL_FROM: ${SYSTEM_MAIL_SENDER_ADDR}
+      DIUN_NOTIF_MAIL_TO: ${ADMIN_MAIL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./images:/images:ro
+      - diun-data:/data
+    secrets:
+      - smtp-pass
+
+
   # Set the ownership of freshly created volumes because docker doesn't provide
   # this feature essential to non-root containers, and compose didn't find it
   # judicious to palliate that 🙄
@@ -150,11 +175,9 @@ services:
 
 
 volumes:
-  # Authelia's config needs to be persisted because it holds important data that
-  # cannot be recovered or regenerated: users' passwords (which they can change)
-  # and their 2FA configurations.
-  authelia-config:
   authelia-cache:
+  authelia-config:
+  diun-data:
   navidrome-data:
   syncthing-config:
 
