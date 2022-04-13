@@ -83,16 +83,18 @@ list-users:
 
 
 # DEV ZONE ### DANGEROUS COMMANDS AHEAD ########################################
-# TODO: Remove or make them difficult to use by mistake
-
-down:
-    just dc down -v
 
 up:
     just dc up -d --remove-orphans
     just dc logs -f
 
-bootstrap: (dc "build") && up
+volumes:
+    docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
+
+down: (_danger "This will destroy all the volumes")
+    just dc down -v
+
+bootstrap: (_danger "This will rebuild the local images and reset the admin user") (dc "build") && up
     just dc up -d --remove-orphans authelia
     while ! { just dc exec authelia wget -qO - http://localhost:9091/api/health | grep OK; } >/dev/null 2>&1; do \
         echo -n .; sleep 0.2; done; echo
@@ -100,5 +102,11 @@ bootstrap: (dc "build") && up
     just _add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
     just dc stop authelia
 
-volumes:
-    docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
+# Extra check for dangerous commands
+# TODO: Disable for non-default project names
+_danger msg:
+    #!/bin/sh
+    challenge="$(cat /dev/urandom | tr -dc '[:lower:]' | fold -w 5 | head -n 1)"
+    echo "$1"
+    read -r -p "Write '$challenge' in uppercase to proceed: " res
+    test "$res" = "$(echo "$challenge" | tr '[:lower:]' '[:upper:]')"
