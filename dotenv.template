@@ -1,0 +1,36 @@
+### Infrastructure #############################################################
+
+DOMAIN=
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+
+SYSTEM_MAIL_SENDER_ADDR=
+SYSTEM_MAIL_SENDER_NAME=
+
+### Personal non-sensitive configurations ######################################
+
+ADMIN_MAIL=
+ADMIN_USER=
+ADMIN_NAME=
+
+### Miscelaneous ###############################################################
+
+# Navidrome doesn't support env variable values from files, so I cannot use
+# secrets as-is. And I'm too annoyed by the state of password storage in
+# navidrome to care enough to roll my own Dockerfile to pass it as a secret 😑
+NAVIDROME_WTF=
+
+
+### NOTE ON DOCKER'S DOTENV FORMAT #############################################
+#
+# The format used by docker compose is close to bash variables, except that
+# unquoted values do not break on spaces or special characters. In compose V1,
+# according to the doc, quotes are included in the value (but the doc might be
+# wrong).
+#
+# Using the compose V2 format with quotes makes the dotenv file compatible with
+# a bunch of other tools, notably just and shell scripts.
+#
+# https://github.com/docker/compose/issues/8607
