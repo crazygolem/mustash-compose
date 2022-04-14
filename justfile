@@ -13,6 +13,7 @@ ps: (dc "ps")
 # Add (or replace) a user in authelia, setting a random password.
 add-user login email name: (_add-user login email name)
     just dc restart authelia
+    @echo "Don't forget to create the user in navidrome!"
 
 _add-user login email name:
     #!/bin/bash
@@ -47,6 +48,7 @@ _add-user login email name:
 # Delete a user from authelia
 delete-user login: (_delete-user login)
     just dc restart authelia
+    @echo "Don't forget to remove the user from navidrome!"
 
 _delete-user login:
     #!/bin/bash
