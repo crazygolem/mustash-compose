@@ -104,6 +104,11 @@ services:
       ND_REVERSEPROXYWHITELIST: 0.0.0.0/0
       # Listen kids, don't passwords like navidrome 🙄
       ND_PASSWORDENCRYPTIONKEY: ${NAVIDROME_WTF}
+      # Until API tokens / app passwords are implemented, I don't want to let
+      # users set their passwords (cf. NAVIDROME_WTF). The email doesn't seem to
+      # be used for anything but gravatar (which is disabled), so really the
+      # user screen is useless...
+      ND_ENABLEUSEREDITING: false
     volumes:
       - navidrome-data:/data
       - /srv/music:/music:ro
