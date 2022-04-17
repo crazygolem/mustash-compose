@@ -17,15 +17,18 @@ services:
       # See note at the botton on the TLS-ALPN-01 challenge
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}
-      - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
-      # In test environments, uncomment the following line
+      - --certificatesresolvers.letsencrypt.acme.storage=/certs/letsencrypt-acme.json
+      # In test environments, uncomment the following line to avoid hitting
+      # letsencrypt rate limits.
+      # Note: traefik does not update existing certificates when the parameter
+      # changes, you need to remove the acme.json file to refresh them.
       #- --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
     ports:
       - 80:80
       - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-data:/data
+      - traefik-certs:/certs
     secrets:
       - traefik-tls.yml
 
@@ -193,7 +196,7 @@ volumes:
   diun-data:
   navidrome-data:
   syncthing-config:
-  traefik-data:
+  traefik-certs:
 
 secrets:
   # Ideally there should be a way to define the ac rules (e.g. required roles)
