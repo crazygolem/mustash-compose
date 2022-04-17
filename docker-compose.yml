@@ -10,7 +10,8 @@ services:
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       # The auth headers get dropped even when the auth middleware is not mapped
-      - --entrypoints.https.http.middlewares=drop-auth-headers@docker
+      # so malicious clients cannot peddle them to misconfigured services
+      - --entrypoints.https.http.middlewares=drop-auth-headers@docker,hsts-headers@file
       # Currently the default TLS configuration can only be set through the file
       # provider, cf. https://github.com/traefik/traefik/issues/5507
       - --providers.file.filename=/run/secrets/traefik-tls.yml
