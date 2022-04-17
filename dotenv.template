@@ -9,6 +9,14 @@ SMTP_USER=
 SYSTEM_MAIL_SENDER_ADDR=
 SYSTEM_MAIL_SENDER_NAME=
 
+# If you want to use ZeroSSL instead of Letsencrypt, create a free account and
+# generate EAB credentials in the "Developer" section. You get unlimited free
+# certificates with that setup, pretty much as with Letsencrypt.
+ZEROSSL_EAB_KID=
+# Base64-encode the hmac key provided by zerossl and remove the padding (equal
+# signs at the end) if any
+ZEROSSL_EAB_HMAC_B64=
+
 ### Personal non-sensitive configurations ######################################
 
 ADMIN_MAIL=

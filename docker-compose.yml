@@ -9,21 +9,36 @@ services:
       - --entrypoints.https.address=:443
       - --entrypoints.http.http.redirections.entrypoint.to=https
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
-      - --entrypoints.https.http.tls.certresolver=letsencrypt
       # The auth headers get dropped even when the auth middleware is not mapped
       - --entrypoints.https.http.middlewares=drop-auth-headers@docker
       # Currently the default TLS configuration can only be set through the file
       # provider, cf. https://github.com/traefik/traefik/issues/5507
       - --providers.file.filename=/run/secrets/traefik-tls.yml
+
+      # Default cert resolver, required even if only one is configured. This
+      # parameter avoids having to configure the resolver on every service.
+      - --entrypoints.https.http.tls.certresolver=letsencrypt
+
+      # Letsencrypt ACME
       # See note at the botton on the TLS-ALPN-01 challenge
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}
       - --certificatesresolvers.letsencrypt.acme.storage=/certs/letsencrypt-acme.json
       # In test environments, uncomment the following line to avoid hitting
-      # letsencrypt rate limits.
+      # letsencrypt's rate limits.
       # Note: traefik does not update existing certificates when the parameter
-      # changes, you need to remove the acme.json file to refresh them.
+      # changes, you need to remove the letsencrypt-acme.json file to refresh
+      # them.
       #- --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+
+      # ZeroSSL ACME (free account required)
+      #- --certificatesresolvers.zerossl.acme.httpchallenge.entrypoint=http
+      #- --certificatesresolvers.zerossl.acme.email=${ADMIN_MAIL}
+      #- --certificatesresolvers.zerossl.acme.storage=/certs/zerossl-acme.json
+      #- --certificatesresolvers.zerossl.acme.caserver=https://acme.zerossl.com/v2/DV90
+      #- --certificatesresolvers.zerossl.acme.eab.kid=${ZEROSSL_EAB_KID}
+      #- --certificatesresolvers.zerossl.acme.eab.hmacencoded=${ZEROSSL_EAB_HMAC_B64}
+
     ports:
       - 80:80
       - 443:443
