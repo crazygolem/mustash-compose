@@ -2,10 +2,10 @@
 
 ## Traefik
 
-- Do not serve default traefik cert on invalid hosts.
-  https://doc.traefik.io/traefik/v2.7/https/tls/#strict-sni-checking
-  https://computerz.solutions/traefik-v2-dynamique-ssl/
-  https://github.com/traefik/traefik/issues/6848
+- TLS configuration (`sniStrict` to prevent serving unmanaged domains with a
+  self-signed cert, min TLS version, ...) cannot be done currently with labels
+  or through CLI args.
+  https://github.com/traefik/traefik/issues/5507
 
 ## Authelia
 

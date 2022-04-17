@@ -11,6 +11,9 @@ services:
       - --entrypoints.http.http.redirections.entrypoint.scheme=https
       # The auth headers get dropped even when the auth middleware is not mapped
       - --entrypoints.https.http.middlewares=drop-auth-headers@docker
+      # Currently the default TLS configuration can only be set through the file
+      # provider, cf. https://github.com/traefik/traefik/issues/5507
+      - --providers.file.filename=/run/secrets/traefik-tls.yml
       # See note at the botton on the TLS-ALPN-01 challenge
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ADMIN_MAIL}
@@ -23,6 +26,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-data:/data
+    secrets:
+      - traefik-tls.yml
 
   authelia:
     image: authelia/authelia:4.34.6
@@ -210,6 +215,10 @@ secrets:
     file: secrets/authelia/storage-encryption-key
   smtp-pass:
     file: secrets/smtp-pass
+  # Nothing sensitive in there, it's just more convenient (cf. comment on
+  # authelia's ac secret).
+  traefik-tls.yml:
+    file: config/traefik/tls.yml
 
 
 # NOTE ON THE ACME TLS-ALPN-01 CHALLENGE
