@@ -146,6 +146,14 @@ up:
 volumes:
     docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
 
+pull:
+    just dc build --pull
+    # Without --ignore-pull-failures, attempts to pull stash-syncthing and fails
+    # cf. https://github.com/docker/compose/issues/8805
+    # The failures are still shown, if anything other than syncthing fails, it
+    # should be addressed.
+    just dc pull --include-deps --ignore-pull-failures
+
 down: (_danger "This will destroy all the volumes")
     just dc down -v
 
