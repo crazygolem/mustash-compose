@@ -50,7 +50,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.34.6
+    image: authelia/authelia:4.35.1
     restart: unless-stopped
     command:
       - --config
@@ -84,6 +84,7 @@ services:
       AUTHELIA_NOTIFIER_SMTP_PORT: ${SMTP_PORT}
       AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER_NAME} <${SYSTEM_MAIL_SENDER_ADDR}>
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
+      AUTHELIA_PASSWORD_POLICY_ZXCVBN_ENABLED: true
       AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
       AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
       AUTHELIA_SESSION_EXPIRATION: 48h
