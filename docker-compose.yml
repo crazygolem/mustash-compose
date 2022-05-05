@@ -169,30 +169,6 @@ services:
       - syncthing-config:/var/syncthing/config
       - /srv/music/library:/data/music-library
 
-  diun:
-    image: crazymax/diun:4.21
-    command: serve
-    restart: unless-stopped
-    environment:
-      TZ: Europe/Zurich
-      DIUN_PROVIDERS_DOCKER: true
-      DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT: true
-      DIUN_PROVIDERS_DOCKER_WATCHSTOPPED: true
-      DIUN_PROVIDERS_DOCKERFILE_PATTERNS: /images/**/Dockerfile*
-      DIUN_WATCH_SCHEDULE: 20 2 * * THU
-      DIUN_NOTIF_MAIL_HOST: ${SMTP_HOST}
-      DIUN_NOTIF_MAIL_PORT: ${SMTP_PORT}
-      DIUN_NOTIF_MAIL_USERNAME: ${SMTP_USER}
-      DIUN_NOTIF_MAIL_PASSWORDFILE: /run/secrets/smtp-pass
-      DIUN_NOTIF_MAIL_FROM: ${SYSTEM_MAIL_SENDER_ADDR}
-      DIUN_NOTIF_MAIL_TO: ${ADMIN_MAIL}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./images:/images:ro
-      - diun-data:/data
-    secrets:
-      - smtp-pass
-
 
   # Set the ownership of freshly created volumes because docker doesn't provide
   # this feature essential to non-root containers, and compose didn't find it
@@ -208,7 +184,6 @@ services:
 volumes:
   authelia-cache:
   authelia-config:
-  diun-data:
   navidrome-data:
   syncthing-config:
   traefik-certs:
