@@ -103,7 +103,7 @@ services:
       - authelia-storage-encryption-key
 
   authelia-cache:
-    image: redis:6.2-alpine
+    image: redis:7.0-alpine
     restart: unless-stopped
     volumes:
       - authelia-cache:/data
