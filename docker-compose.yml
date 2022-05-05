@@ -142,8 +142,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 1.19.2
-    image: stash-syncthing:1.19.2
+        syncthing_version: 1.20.1
+    image: stash-syncthing:1.20.1
     restart: unless-stopped
     user: 1000:1000
     depends_on:
