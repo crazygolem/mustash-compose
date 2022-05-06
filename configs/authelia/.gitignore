@@ -1,0 +1,3 @@
+# Contains personal data (the DOMAIN) that should not be committed.
+# Regenerate this file from its template with the update-from-template recipe.
+/access-control.yml

@@ -76,7 +76,7 @@ services:
     environment:
       TZ: Europe/Zurich
       # If the file does not exist, authelia outputs an error, generates the
-      # file and then exits. Restarting the service then works fine.
+      # file and then exits. After it restarts the service then works fine.
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH: /config/users.yml
       AUTHELIA_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
       AUTHELIA_NOTIFIER_SMTP_HOST: ${SMTP_HOST}
@@ -143,7 +143,7 @@ services:
       context: images/syncthing
       args:
         syncthing_version: 1.20.1
-    image: stash-syncthing:1.20.1
+    image: mustash-syncthing:1.20.1
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -167,6 +167,8 @@ services:
       INSTANCE_NAME: ${DOMAIN}
     volumes:
       - syncthing-config:/var/syncthing/config
+      # Mounted as a subdirectory of /srv/music used by navidrome to allow other
+      # sources to contribute music.
       - /srv/music/library:/data/music-library
 
 
@@ -197,21 +199,25 @@ secrets:
   # in the container.
   # Mounting using secrets instead of a normal bind mount makes it a bit nicer
   # on the original file on the host (e.g. no ownership change) and allows if
-  # needed to specify a different ownership in the container.
+  # needed to specify a different owner in the container.
   authelia-access-control.yml:
-    file: secrets/authelia/access-control.yml
+    file: configs/authelia/access-control.yml
+  # Random, persistent string generated for this environment
   authelia-jwt-secret:
     file: secrets/authelia/jwt-secret
+  # Random, persistent string generated for this environment
   authelia-session-secret:
     file: secrets/authelia/session-secret
+  # Random, persistent string generated for this environment
   authelia-storage-encryption-key:
     file: secrets/authelia/storage-encryption-key
+  # Password for the authentication against an external SMTP server
   smtp-pass:
     file: secrets/smtp-pass
-  # Nothing sensitive in there, it's just more convenient (cf. comment on
-  # authelia's ac secret).
+  # Nothing sensitive in there, it's just more convenient to mount it as a
+  # secret, cf. comment on authelia's ac secret.
   traefik-tls.yml:
-    file: config/traefik/tls.yml
+    file: configs/traefik/tls.yml
 
 
 # NOTE ON THE ACME TLS-ALPN-01 CHALLENGE

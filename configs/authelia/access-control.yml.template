@@ -1,0 +1,13 @@
+access_control:
+  default_policy: deny
+  rules:
+    - domain:
+        - music.${DOMAIN}
+      subject:
+        - ["group:user"]
+      policy: one_factor
+    - domain:
+        - syncthing.${DOMAIN}
+      subject:
+        - ["group:admin"]
+      policy: two_factor

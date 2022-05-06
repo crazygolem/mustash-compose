@@ -1,6 +1,7 @@
 set positional-arguments
 set dotenv-load
 
+# List the recipes
 @default:
     just --list
 
@@ -8,6 +9,7 @@ set dotenv-load
 @dc +args:
     docker compose "$@"
 
+# Save at least three keystrokes
 ps: (dc "ps")
 
 # Add (or replace) a user in authelia setting a random password, provision the user in navidrome
@@ -41,6 +43,23 @@ _authelia-add-user login email name:
                     "groups": .users[env(login)].groups // [ "user" ]
                 }
             }
+        ' \
+    | just dc exec -T authelia sed -n 'w /tmp/users.yml'
+
+    just dc exec authelia mv /tmp/users.yml /config/users.yml
+
+_authelia-set-user-groups login *groups:
+    #!/bin/bash
+
+    set -eo pipefail
+
+    just dc exec authelia cat /config/users.yml \
+    | env \
+        login="${1:?Missing login}" \
+        groups="$(jq -cn '$ARGS.positional' --args -- "${@:2}")" \
+        yq -P '
+            (.users | with_entries(select(.key == env(login))))
+            |= .[].groups = env(groups) | . style="folded"
         ' \
     | just dc exec -T authelia sed -n 'w /tmp/users.yml'
 
@@ -139,24 +158,29 @@ list-users:
 
 # DEV ZONE ### DANGEROUS COMMANDS AHEAD ########################################
 
+# Create and starts the services, then show the logs
 up:
     just dc up -d --remove-orphans
     just dc logs -f
 
+# List the docker volumes
 volumes:
     docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
 
+# Update the docker images, rebuilding the custom ones
 pull:
     just dc build --pull
-    # Without --ignore-pull-failures, attempts to pull stash-syncthing and fails
-    # cf. https://github.com/docker/compose/issues/8805
+    # Without --ignore-pull-failures, attempts to pull mustash-syncthing and
+    # fails, cf. https://github.com/docker/compose/issues/8805
     # The failures are still shown, if anything other than syncthing fails, it
     # should be addressed.
     just dc pull --include-deps --ignore-pull-failures
 
+# /!\ Destroy the deployment
 down: (_danger "This will destroy all the volumes")
     just dc down -v
 
+# Deploy from scratch
 bootstrap: (_danger "This will rebuild the local images and reset the admin user")
     just dc build
     just dc up -d --remove-orphans authelia navidrome
@@ -164,11 +188,24 @@ bootstrap: (_danger "This will rebuild the local images and reset the admin user
         echo -n .; sleep 0.2; done; echo
     just _authelia-delete-user authelia
     just _authelia-add-user "${ADMIN_USER}" "${ADMIN_MAIL}" "${ADMIN_NAME}"
+    just _authelia-set-user-groups "${ADMIN_USER}" user admin
     just dc exec navidrome wget -qO /dev/null \
         --post-data '{"username":"'"${ADMIN_USER}"'","password":"'"$(pwgen -s 64 1)"'"}' \
         http://localhost:4533/auth/createAdmin
     just dc stop authelia navidrome
     just up
+
+# Regenerate a configuration from its template, using variables from the .env
+update-from-template dst tpl='':
+    #!/bin/sh
+    cat <<\EOF | env --ignore-environment bash -s "$@"
+    set -eo pipefail
+    if [ -f .env ]; then
+        # This is dangerous, make sure .env does not contain malicious code
+        set -a; source .env; set +a
+    fi
+    envsubst <"${2:-${1}.template}" >"$1"
+    EOF
 
 # Extra check for dangerous commands
 # TODO: Disable for non-default project names

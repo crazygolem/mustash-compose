@@ -1,34 +1,40 @@
 ### Infrastructure #############################################################
 
-DOMAIN=
+# Domain used for this deployment. Public services get a subdomain under it.
+DOMAIN=${DOMAIN}
 
-SMTP_HOST=
-SMTP_PORT=
-SMTP_USER=
+# Configuration for an external SMTP server. TLS is assumed (STARTTLS or SMTPS).
+# The SMTP password must be placed in the file secrets/smtp-pass.
+SMTP_HOST=${SMTP_HOST}
+SMTP_PORT=${SMTP_PORT}
+SMTP_USER=${SMTP_USER}
 
-SYSTEM_MAIL_SENDER_ADDR=
-SYSTEM_MAIL_SENDER_NAME=
+# Email (for the "from" line) of the system account, e.g. for notifications.
+SYSTEM_MAIL_SENDER_ADDR=${SYSTEM_MAIL_SENDER_ADDR}
+SYSTEM_MAIL_SENDER_NAME=${SYSTEM_MAIL_SENDER_NAME}
 
 # If you want to use ZeroSSL instead of Letsencrypt, create a free account and
 # generate EAB credentials in the "Developer" section. You get unlimited free
 # certificates with that setup, pretty much as with Letsencrypt.
-ZEROSSL_EAB_KID=
+ZEROSSL_EAB_KID=${ZEROSSL_EAB_KID}
 # Base64-encode the hmac key provided by zerossl and remove the padding (equal
 # signs at the end) if any
-ZEROSSL_EAB_HMAC_B64=
+ZEROSSL_EAB_HMAC_B64=${ZEROSSL_EAB_HMAC_B64}
 
 ### Personal non-sensitive configurations ######################################
 
-ADMIN_MAIL=
-ADMIN_USER=
-ADMIN_NAME=
+# Administrator of this deployment, also used as a tech user by just recipes
+ADMIN_MAIL=${ADMIN_MAIL}
+ADMIN_USER=${ADMIN_USER}
+ADMIN_NAME=${ADMIN_NAME}
 
 ### Miscelaneous ###############################################################
 
+# Random, persistent string generated for this environment.
 # Navidrome doesn't support env variable values from files, so I cannot use
 # secrets as-is. And I'm too annoyed by the state of password storage in
 # navidrome to care enough to roll my own Dockerfile to pass it as a secret 😑
-NAVIDROME_WTF=
+NAVIDROME_WTF=${NAVIDROME_WTF}
 
 
 ### NOTE ON DOCKER'S DOTENV FORMAT #############################################
