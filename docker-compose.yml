@@ -50,7 +50,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.35.1
+    image: authelia/authelia:4.35.2
     restart: unless-stopped
     command:
       - --config
