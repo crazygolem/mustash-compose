@@ -128,8 +128,10 @@ can access
 
 ## Authelia
 
-- Usernames are case sensitive, ideally it should accept any case as input but
-  normalize the output.
+- Usernames are case sensitive on purpose in authelia (cf. commits on
+  https://github.com/authelia/authelia/issues/561), which can lead to UX issues
+  when users don't create their username themselves (or when they forget the
+  casing they used).
 
 ## Navidrome
 
