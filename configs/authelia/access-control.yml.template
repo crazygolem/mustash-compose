@@ -4,9 +4,16 @@ access_control:
     - domain:
         - music.${DOMAIN}
       resources:
+        # Non-sensitive assets from navidrome repo's ui/public/ directory.
+        # If manifest.webmanifest and the assets it references are not listed
+        # here, navidrome cannot be properly installed as a PWA.
+        - '/favicon\.ico$'
+        - '/robots\.txt$'
+        - '^/app/android-chrome(-\d+x\d+)?\.png$'
+        - '^/app/apple-touch-icon(-\d+x\d+)?\.png$'
+        - '^/app/favicon(-\d+x\d+)?\.png$'
         - '^/app/manifest\.webmanifest$'
-        - '^/app/android-chrome-192x192\.png$'
-        - '^/app/android-chrome-512x512\.png$'
+        - '^/app/safari-pinned-tab\.svg$'
       policy: bypass
     - domain:
         - music.${DOMAIN}

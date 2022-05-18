@@ -146,8 +146,6 @@ can access
 
 - TODO: Auth passthrough for /rest path, for subsonic clients
   → Only when app tokens get implemented, the web app is good enough until then
-- TODO: Get a list of public resources (PWA manifest, favicons, ...) to add to
-  authelia's bypass rule
 
 ## Syncthing
 
