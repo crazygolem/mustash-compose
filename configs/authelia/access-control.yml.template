@@ -3,6 +3,13 @@ access_control:
   rules:
     - domain:
         - music.${DOMAIN}
+      resources:
+        - '^/app/manifest\.webmanifest$'
+        - '^/app/android-chrome-192x192\.png$'
+        - '^/app/android-chrome-512x512\.png$'
+      policy: bypass
+    - domain:
+        - music.${DOMAIN}
       subject:
         - ["group:user"]
       policy: one_factor
