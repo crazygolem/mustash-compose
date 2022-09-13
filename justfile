@@ -207,6 +207,39 @@ update-from-template dst tpl='':
     envsubst <"${2:-${1}.template}" >"$1"
     EOF
 
+# Compare running and latest released versions of select services
+versions:
+    #!/bin/bash
+    set -eo pipefail
+
+    # Only github repos that publish proper github releases are supported
+    declare -A repos=(
+        [authelia]=authelia/authelia
+        [authelia-cache]=redis/redis
+        [navidrome]=navidrome/navidrome
+        [syncthing]=syncthing/syncthing
+        [traefik]=traefik/traefik
+    )
+
+    {
+        printf '%s\t%s\t%s\n' SERVICE RUNNING AVAILABLE
+        for svc in $(printf '%s\n' "${!repos[@]}" | sort); do
+            printf '%s\t%s\t%s\n' \
+                "$svc" \
+                "$(
+                    just dc images "$svc" | tail -n -1 \
+                    | awk '{print $3}' \
+                    | sed 's/^v//' | sed 's/-.*$//'
+                )" \
+                "$(
+                    # BEWARE OF THE LOW RATE LIMITS
+                    # See https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limit-http-headers
+                    curl -sSL "https://api.github.com/repos/${repos[$svc]}/releases/latest" \
+                    | jq -r .tag_name | sed 's/^v//'
+                )"
+        done
+    } | column -t -s $'\t'
+
 # Extra check for dangerous commands
 # TODO: Disable for non-default project names
 _danger msg:
