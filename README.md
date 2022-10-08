@@ -156,3 +156,22 @@ can access
 - TODO: Allow loading extra custom configs from files
 - TODO: Rewrite syncthing-start in Go, using gojq as a lib
   https://github.com/itchyny/gojq
+
+- Warning in the logs:
+  > failed to sufficiently increase receive buffer size (was: 208 kiB, wanted:
+  > 2048 kiB, got: 416 kiB).
+  > See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
+  > for details.
+
+  Complete instructions depend on the OS, for Debian the "non-BSD" instructions
+  in the linked page are appropriate, but also incomplete. In order to persist
+  the change accross reboots, a sysctl config file has to be created.
+
+  ```conf path=/etc/sysctl.d/mustash-compose.conf
+  # Recommended for syncthing
+  # See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
+  net.core.rmem_max=2500000
+  ```
+
+  And then the command `sysctl --load /etc/sysctl.d/mustash-compose.conf` can be
+  executed as root to apply the configuration to the running system.
