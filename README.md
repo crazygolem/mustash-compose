@@ -126,13 +126,6 @@ can access
   or through CLI args.
   https://github.com/traefik/traefik/issues/5507
 
-## Authelia
-
-- Usernames are case sensitive on purpose in authelia (cf. commits on
-  https://github.com/authelia/authelia/issues/561), which can lead to UX issues
-  when users don't create their username themselves (or when they forget the
-  casing they used).
-
 ## Navidrome
 
 - Using auth proxy, users are not automatically created.

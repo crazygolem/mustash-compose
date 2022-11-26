@@ -50,7 +50,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.36.9
+    image: authelia/authelia:4.37.2
     restart: unless-stopped
     command:
       - --config
@@ -78,6 +78,8 @@ services:
       # If the file does not exist, authelia outputs an error, generates the
       # file and then exits. After it restarts the service then works fine.
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH: /config/users.yml
+      AUTHELIA_AUTHENTICATION_BACKEND_FILE_SEARCH_CASE_INSENSITIVE: true
+      AUTHELIA_AUTHENTICATION_BACKEND_FILE_WATCH: true
       AUTHELIA_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
       AUTHELIA_NOTIFIER_SMTP_HOST: ${SMTP_HOST}
       AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: /run/secrets/smtp-pass
@@ -86,11 +88,11 @@ services:
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
       AUTHELIA_PASSWORD_POLICY_ZXCVBN_ENABLED: true
       AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
-      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
       AUTHELIA_SESSION_EXPIRATION: 48h
       AUTHELIA_SESSION_INACTIVITY: 8h
       AUTHELIA_SESSION_REDIS_HOST: authelia-cache
       AUTHELIA_SESSION_REDIS_PORT: 6379
+      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
       AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/authelia-storage-encryption-key
       AUTHELIA_STORAGE_LOCAL_PATH: /config/storage.sqlite3
     volumes:

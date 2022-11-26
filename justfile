@@ -16,7 +16,6 @@ ps: (dc "ps")
 add-user $login $email $name:
     just _authelia-add-user "$login" "$email" "$name"
     just _navidrome-add-user "$login" "$name"
-    just dc restart authelia
 
 _authelia-add-user login email name:
     #!/bin/bash
@@ -40,7 +39,8 @@ _authelia-add-user login email name:
                     "displayname": env(name),
                     "password": .users[env(login)].password // env(pwd),
                     "email": env(email),
-                    "groups": .users[env(login)].groups // [ "user" ]
+                    "groups": .users[env(login)].groups // [ "user" ],
+                    "disabled": false
                 }
             }
         ' \
@@ -93,7 +93,6 @@ _navidrome-add-user login name:
 delete-user $login:
     just _navidrome-delete-user "$login"
     just _authelia-delete-user "$login"
-    just dc restart authelia
 
 _authelia-delete-user login:
     #!/bin/bash
