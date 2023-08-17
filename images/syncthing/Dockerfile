@@ -18,6 +18,8 @@ EXPOSE 8384 22000/tcp 22000/udp 21027/udp
 
 RUN apk --no-cache add \
     ca-certificates \
+    curl \
+    libcap \
     su-exec \
     tzdata
 
@@ -27,7 +29,7 @@ COPY --from=upstream \
 ENV PUID=1000 PGID=1000 HOME=/var/syncthing
 
 HEALTHCHECK --interval=1m --timeout=10s \
-    CMD nc -z 127.0.0.1 8384 || exit 1
+    CMD curl -fkLsS -m 2 127.0.0.1:8384/rest/noauth/health | grep -o --color=never OK || exit 1
 
 ### such custom ################################################################
 
