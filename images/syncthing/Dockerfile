@@ -28,9 +28,11 @@ COPY --from=upstream \
 
 ENV PUID=1000 PGID=1000 HOME=/var/syncthing
 
+ENV STHOMEDIR=/var/syncthing/config
+
 ### such custom ################################################################
 
-ENTRYPOINT ["/bin/entrypoint.sh", "/syncthing-start", "/var/syncthing/config"]
+ENTRYPOINT ["/bin/entrypoint.sh", "/syncthing-start"]
 
 # TODO: revert retries and interval to upstream values once --start-interval
 #       gets supported on my server:

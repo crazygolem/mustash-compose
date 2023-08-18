@@ -13,9 +13,8 @@
 
 set -eo pipefail
 
-STHOME="${1:?Missing config directory}"
 APIKEY="$(cat /proc/sys/kernel/random/uuid)"
-export STHOME APIKEY
+export APIKEY
 
 ### environment ################################################################
 
@@ -67,6 +66,7 @@ stcli() {
     # https://github.com/syncthing/syncthing/issues/8255
     local endpoint timeout start now did_wait out
     endpoint=(
+        # Setting the endpoint like this makes it unnecessary to provide --home
         --gui-address 127.0.0.1:8888
         --gui-apikey "$APIKEY"
     )
@@ -143,8 +143,6 @@ config() {
 echo "Configuring syncthing..."
 
 initargs=(
-    --home "$STHOME"
-
     # Using a different port during initialization ensures that the healthcheck
     # doesn't give false positives.
     # Overridden only during initialization.
@@ -231,4 +229,4 @@ wait
 echo "Configuration done, restarting..."
 
 # Start syncthing for normal operations
-syncthing serve --home "$STHOME"
+syncthing serve
