@@ -88,7 +88,7 @@ _navidrome-add-user login name:
 
     just dc exec navidrome wget -qO /dev/null \
         --header 'content-type: application/json' \
-        --header 'remote-user: crazygolem' \
+        --header "remote-user: ${ADMIN_USER}" \
         --post-data '{"isAdmin":false,"userName":"'"$1"'","name":"'"$2"'","password":"'"$(pwgen -s 64 1)"'"}' \
         http://localhost:4533/api/user
 
