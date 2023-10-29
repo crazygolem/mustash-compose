@@ -12,6 +12,10 @@ set dotenv-load
 # Save at least three keystrokes
 ps: (dc "ps")
 
+# Follow log output from services
+logs *svc:
+    just dc logs -f "$@"
+
 # Add (or replace) a user in authelia setting a random password, provision the user in navidrome
 add-user $login $email $name:
     just _authelia-add-user "$login" "$email" "$name"
