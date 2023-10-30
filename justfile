@@ -10,7 +10,7 @@ set dotenv-load
     docker compose "$@"
 
 # Save at least three keystrokes
-ps: (dc "ps")
+ps: (dc "ps" "--format" 'table {{ .Service }}\t{{ printf "%.12s" .ID }}\t{{ .Image }}\t{{ .RunningFor }}\t{{ .State }}\t{{ .Status }}')
 
 # Follow log output from services
 logs *svc:
