@@ -63,7 +63,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.37.5
+    image: authelia/authelia:4.38.8
     restart: unless-stopped
     command:
       - --config
@@ -103,10 +103,9 @@ services:
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH: /config/users.yml
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_SEARCH_CASE_INSENSITIVE: true
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_WATCH: true
-      AUTHELIA_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
-      AUTHELIA_NOTIFIER_SMTP_HOST: ${SMTP_HOST}
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
+      AUTHELIA_NOTIFIER_SMTP_ADDRESS: ${SMTP_HOST}:${SMTP_PORT}
       AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE: /run/secrets/smtp-pass
-      AUTHELIA_NOTIFIER_SMTP_PORT: ${SMTP_PORT}
       AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER_NAME} <${SYSTEM_MAIL_SENDER_ADDR}>
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
       AUTHELIA_PASSWORD_POLICY_ZXCVBN_ENABLED: true
