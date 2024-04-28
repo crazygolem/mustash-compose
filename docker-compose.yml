@@ -40,6 +40,19 @@ services:
       #- --certificatesresolvers.zerossl.acme.eab.kid=${ZEROSSL_EAB_KID}
       #- --certificatesresolvers.zerossl.acme.eab.hmacencoded=${ZEROSSL_EAB_HMAC_B64}
 
+      # Add support for authenticating subsonic clients.
+      # Only the password scheme is supported (`p` subsonic parameter), not the
+      # token scheme (`t` and `s` parameters). The password scheme is sometimes
+      # labelled "less secure" or "legacy" in subsonic clients, and must usually
+      # be explicitly enabled.
+      #
+      # Read the SECURITY WARNING section in the plugin's readme before
+      # deploying, and make sure to understand the security and privacy
+      # implications of using this plugin.
+      # THE AUTHORS OF- AND CONTRIBUTORS TO THIS COMPOSE FILE DECLINE ALL
+      # RESPONSIBILITY FOR YOUR USE OF THIS PLUGIN.
+      - --experimental.plugins.subsonic-basicauth.modulename=github.com/crazygolem/traefik-subsonic-basicauth
+      - --experimental.plugins.subsonic-basicauth.version=v0.2.0
     ports:
       - 80:80
       - 443:443
@@ -64,13 +77,23 @@ services:
       traefik.enable: true
       traefik.http.routers.authelia.rule: Host(`auth.${DOMAIN}`)
       traefik.http.routers.authelia.entrypoints: https
+      # Standard authentication middleware to be used by most services
       traefik.http.middlewares.authelia.forwardauth.address: http://authelia:9091/api/verify?rd=https://auth.${DOMAIN}/
       traefik.http.middlewares.authelia.forwardauth.trustForwardHeader: true
       traefik.http.middlewares.authelia.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
+      # Security middleware for the entrypoints
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-User:
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Groups:
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Name:
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Email:
+      # Subsonicauth middleware
+      traefik.http.middlewares.authelia-subsonicauth.chain.middlewares: subsonicauth-sub2basic@docker,authservice-basicauth@docker,subsonicauth-cleanup@docker
+      traefik.http.middlewares.authservice-basicauth.forwardauth.address: http://authelia:9091/api/verify?auth=basic
+      traefik.http.middlewares.authservice-basicauth.forwardauth.trustForwardHeader: true
+      traefik.http.middlewares.authservice-basicauth.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
+      traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.auth: proxy
+      traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.header: Authorization
+      traefik.http.middlewares.subsonicauth-cleanup.headers.customrequestheaders.Authorization: # empty removes the header
     healthcheck:
       disable: true
     environment:
@@ -111,7 +134,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.49.3
+    image: deluan/navidrome:0.52.0
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -125,17 +148,26 @@ services:
       traefik.http.routers.navidrome.rule: Host(`music.${DOMAIN}`)
       traefik.http.routers.navidrome.entrypoints: https
       traefik.http.routers.navidrome.middlewares: authelia@docker
+      traefik.http.routers.navidrome-subsonic.rule: Host(`music.${DOMAIN}`) && PathPrefix(`/rest/`) && !Query(`c`, `NavidromeUI`)
+      traefik.http.routers.navidrome-subsonic.entrypoints: https
+      traefik.http.routers.navidrome-subsonic.middlewares: authelia-subsonicauth@docker
     environment:
       # All requests come through traefik, and we cannot specify a hostname only
-      # an IP range, so we must trust all IPs (and it's safe in this setup).
+      # an IP range, so we must trust all IPs. This means that any other service
+      # in the same docker network can make a request to navidrome, and easily
+      # impersonate an admin.
       ND_REVERSEPROXYWHITELIST: 0.0.0.0/0
       # Listen kids, don't passwords like navidrome 🙄
       ND_PASSWORDENCRYPTIONKEY: ${NAVIDROME_WTF}
-      # Until API tokens / app passwords are implemented, I don't want to let
-      # users set their passwords (cf. NAVIDROME_WTF). The email doesn't seem to
-      # be used for anything but gravatar (which is disabled), so really the
-      # user screen is useless...
+      # Authentication is fully delegated to traefik/authelia (even for subsonic
+      # clients) so users don't need to manage their password in navidrome. The
+      # email doesn't seem to be used for anything but gravatar (which is
+      # disabled), so really the user screen is useless...
       ND_ENABLEUSEREDITING: false
+      # The sharing feature is still under development, and currently does not
+      # implement permissions, giving all users admin-like rights over all
+      # shares.
+      ND_ENABLESHARING: false
     volumes:
       - navidrome-data:/data
       - /srv/music:/music:ro

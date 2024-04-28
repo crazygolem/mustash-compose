@@ -14,6 +14,9 @@ access_control:
         - '^/app/favicon(-\d+x\d+)?\.png$'
         - '^/app/manifest\.webmanifest$'
         - '^/app/safari-pinned-tab\.svg$'
+        # Public shares endpoint. If public shares are not enabled, navidrome
+        # will reject the requests itself.
+        - '^/share/'
       policy: bypass
     - domain:
         - music.${DOMAIN}
