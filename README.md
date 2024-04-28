@@ -119,6 +119,13 @@ can access
 
 # Work notes
 
+## Docker Compose
+
+- TODO: Isolate services, they should generally only be reachable through the
+  traefik reverse proxy, and should not be able to communicate directly with
+  each others (e.g. it should not be possible to make a REST request from
+  syncthing to navidrome).
+
 ## Traefik
 
 - TLS configuration (`sniStrict` to prevent serving unmanaged domains with a
