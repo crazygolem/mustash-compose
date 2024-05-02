@@ -79,7 +79,6 @@ services:
       traefik.http.routers.authelia.entrypoints: https
       # Standard authentication middleware to be used by most services
       traefik.http.middlewares.authelia.forwardauth.address: http://authelia:9091/api/verify?rd=https://auth.${DOMAIN}/
-      traefik.http.middlewares.authelia.forwardauth.trustForwardHeader: true
       traefik.http.middlewares.authelia.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
       # Security middleware for the entrypoints
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-User:
@@ -89,7 +88,6 @@ services:
       # Subsonicauth middleware
       traefik.http.middlewares.authelia-subsonicauth.chain.middlewares: subsonicauth-sub2basic@docker,authservice-basicauth@docker,subsonicauth-cleanup@docker
       traefik.http.middlewares.authservice-basicauth.forwardauth.address: http://authelia:9091/api/verify?auth=basic
-      traefik.http.middlewares.authservice-basicauth.forwardauth.trustForwardHeader: true
       traefik.http.middlewares.authservice-basicauth.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
       traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.auth: proxy
       traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.header: Authorization
