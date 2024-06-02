@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v2.11.0
+    image: traefik:v2.11.3
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -131,7 +131,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.52.0
+    image: deluan/navidrome:0.52.5
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -173,8 +173,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 1.27.3
-    image: mustash-syncthing:1.27.3
+        syncthing_version: 1.27.7
+    image: mustash-syncthing:1.27.7
     restart: unless-stopped
     user: 1000:1000
     depends_on:
