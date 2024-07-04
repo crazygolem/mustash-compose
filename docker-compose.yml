@@ -63,7 +63,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.38.8
+    image: authelia/authelia:4.38.9
     restart: unless-stopped
     command:
       - --config
@@ -173,8 +173,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 1.27.7
-    image: mustash-syncthing:1.27.7
+        syncthing_version: 1.27.9
+    image: mustash-syncthing:1.27.9
     restart: unless-stopped
     user: 1000:1000
     depends_on:
