@@ -168,7 +168,7 @@ up:
 
 # List the docker volumes
 volumes:
-    docker volume ls -q | grep "^$(just dc config | yq .name)_" || true
+    docker volume ls -q --filter label=com.docker.compose.project="$(just dc config --format json | jq -r .name)"
 
 # Update the docker images, rebuilding the custom ones
 pull:
