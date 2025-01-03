@@ -158,6 +158,63 @@ list-users:
         '
     } | column -t -s $'\t'
 
+# Backup project volumes
+backup:
+    #!/bin/bash
+
+    set -eo pipefail
+
+    vlabel() {
+        local volume="${1:?}"
+        local label="${2:?}"
+
+        docker volume inspect \
+            --format '{{{{ index .Labels "$label" }}' \
+            "$volume"
+    }
+
+    project="$(just dc config --format json | jq -r .name)"
+
+    echo "Backing up the following volumes:"
+    for volume in $(
+        docker volume ls -q \
+            --filter label=com.docker.compose.project="$project"
+    ); do
+        label=volume-backup
+        enabled="$(vlabel "$volume" "$label")"
+        case "$enabled" in
+            false|exclude|0) continue ;;
+            true|include|1|'') ;; # Enabled by default
+            *)  >&2 echo "Invalid label on volume '$volume': $label=$enabled"
+                exit 1
+                ;;
+        esac
+
+        # Note: quadruple left brace is due to just interpolation
+        shortname="$(
+            docker volume inspect \
+                --format '{{{{ index .Labels "com.docker.compose.volume" }}' \
+                "$volume"
+        )"
+        echo "  $shortname"
+        volumes+=(--volume "${volume}:/backup/${shortname}:ro")
+    done
+
+    if ! (( ${#volumes[@]} )); then
+        >&2 echo "No volume configured for backup."
+        exit 1
+    fi
+    echo
+
+    just dc stop
+    docker run --rm \
+        --entrypoint backup \
+        --volume ./backups/:/archive/ \
+        "${volumes[@]}" \
+        --env BACKUP_EXCLUDE_REGEXP='/cache/' \
+        offen/docker-volume-backup:v2
+    just dc start
+
 
 # DEV ZONE ### DANGEROUS COMMANDS AHEAD ########################################
 
