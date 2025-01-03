@@ -168,35 +168,42 @@ backup:
         local volume="${1:?}"
         local label="${2:?}"
 
+        # Note: quadruple left brace is due to just interpolation
         docker volume inspect \
-            --format '{{{{ index .Labels "$label" }}' \
+            --format '{{{{ index .Labels "'"$label"'" }}' \
             "$volume"
     }
 
     project="$(just dc config --format json | jq -r .name)"
 
-    echo "Backing up the following volumes:"
+    echo "BACKUP CONFIGURATION"
     for volume in $(
         docker volume ls -q \
             --filter label=com.docker.compose.project="$project"
     ); do
+        shortname="$(vlabel "$volume" com.docker.compose.volume)"
+
         label=volume-backup
         enabled="$(vlabel "$volume" "$label")"
         case "$enabled" in
-            false|exclude|0) continue ;;
-            true|include|1|'') ;; # Enabled by default
-            *)  >&2 echo "Invalid label on volume '$volume': $label=$enabled"
+            '') # Enabled by default
+                printf '[ ✔ ] %s (default)\n' \
+                    "$shortname"
+                ;;
+            true|include|1)
+                printf '[ ✔ ] %s (volume label: %s=%s)\n' \
+                    "$shortname" "$label" "$enabled"
+                ;;
+            false|exclude|0)
+                printf '[   ] %s (volume label: %s=%s)\n' \
+                    "$shortname" "$label" "$enabled"
+                continue
+                ;;
+            *)  >&2 printf '[ERR] %s (invalid volume label: %s=%s)\n' \
+                    "$shortname" "$label" "$enabled"
                 exit 1
                 ;;
         esac
-
-        # Note: quadruple left brace is due to just interpolation
-        shortname="$(
-            docker volume inspect \
-                --format '{{{{ index .Labels "com.docker.compose.volume" }}' \
-                "$volume"
-        )"
-        echo "  $shortname"
         volumes+=(--volume "${volume}:/backup/${shortname}:ro")
     done
 
@@ -211,7 +218,6 @@ backup:
         --entrypoint backup \
         --volume ./backups/:/archive/ \
         "${volumes[@]}" \
-        --env BACKUP_EXCLUDE_REGEXP='/cache/' \
         offen/docker-volume-backup:v2
     just dc start
 

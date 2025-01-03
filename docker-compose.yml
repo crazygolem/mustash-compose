@@ -168,6 +168,7 @@ services:
       ND_ENABLESHARING: false
     volumes:
       - navidrome-data:/data
+      - navidrome-cache:/data/cache
       - /srv/music:/music:ro
 
   syncthing:
@@ -211,13 +212,19 @@ services:
     build:
       context: images/user-volumes
     volumes:
+      - navidrome-cache:/mnt/navidrome-cache
       - navidrome-data:/mnt/navidrome-data
       - syncthing-config:/mnt/syncthing-config
 
 
 volumes:
   authelia-cache:
+    labels:
+      volume-backup: exclude
   authelia-config:
+  navidrome-cache:
+    labels:
+      volume-backup: exclude
   navidrome-data:
   syncthing-config:
   traefik-certs:
