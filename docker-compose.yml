@@ -132,7 +132,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.53.3
+    image: deluan/navidrome:0.54.4
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -166,6 +166,13 @@ services:
       # implement permissions, giving all users admin-like rights over all
       # shares.
       ND_ENABLESHARING: false
+      # Regular local backups saved in the data volume. This is meant mostly as
+      # a lazy fail-safe, and should be coupled with a more robust backup
+      # mechanism. The schedule and retention configuration below is adapted for
+      # a stable and low-use instance.
+      ND_BACKUP_PATH: /data/backups
+      ND_BACKUP_SCHEDULE: 0 5 ? * 1
+      ND_BACKUP_COUNT: 4
     volumes:
       - navidrome-data:/data
       - navidrome-cache:/data/cache
