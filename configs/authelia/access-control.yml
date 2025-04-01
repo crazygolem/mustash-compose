@@ -2,7 +2,7 @@ access_control:
   default_policy: deny
   rules:
     - domain:
-        - music.${DOMAIN}
+        - music.{{ env "DOMAIN" }}
       resources:
         # Non-sensitive assets from navidrome repo's ui/public/ directory.
         # If manifest.webmanifest and the assets it references are not listed
@@ -19,12 +19,12 @@ access_control:
         - '^/share/'
       policy: bypass
     - domain:
-        - music.${DOMAIN}
+        - music.{{ env "DOMAIN" }}
       subject:
-        - ["group:user"]
+        - [ group:user ]
       policy: one_factor
     - domain:
-        - syncthing.${DOMAIN}
+        - syncthing.{{ env "DOMAIN" }}
       subject:
-        - ["group:admin"]
+        - [ group:admin ]
       policy: two_factor

@@ -64,11 +64,18 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.38.17
+    image: authelia/authelia:4.39.1
     restart: unless-stopped
+    user: 1000:1000
     command:
-      - --config
-      - /run/secrets/authelia-access-control.yml
+      # The entrypoint is a bit weird, and does different things depending on
+      # whether the first parameter is `--config` and the user it is run as.
+      # If you change something here, better check the entrypoint to make sure
+      # it does what you expect.
+      - authelia
+      - --config.experimental.filters=template
+      - --config=/run/secrets/authelia-access-control.yml
+      - --config=/run/secrets/authelia-configuration.yml
     depends_on:
       authelia-cache:
         condition: service_started
@@ -79,7 +86,7 @@ services:
       traefik.http.routers.authelia.rule: Host(`auth.${DOMAIN}`)
       traefik.http.routers.authelia.entrypoints: https
       # Standard authentication middleware to be used by most services
-      traefik.http.middlewares.authelia.forwardauth.address: http://authelia:9091/api/verify?rd=https://auth.${DOMAIN}/
+      traefik.http.middlewares.authelia.forwardauth.address: http://authelia:9091/api/authz/web
       traefik.http.middlewares.authelia.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
       # Security middleware for the entrypoints
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-User:
@@ -88,7 +95,7 @@ services:
       traefik.http.middlewares.drop-auth-headers.headers.customrequestheaders.Remote-Email:
       # Subsonicauth middleware
       traefik.http.middlewares.authelia-subsonicauth.chain.middlewares: subsonicauth-sub2basic@docker,authservice-basicauth@docker,subsonicauth-cleanup@docker
-      traefik.http.middlewares.authservice-basicauth.forwardauth.address: http://authelia:9091/api/verify?auth=basic
+      traefik.http.middlewares.authservice-basicauth.forwardauth.address: http://authelia:9091/api/authz/basic
       traefik.http.middlewares.authservice-basicauth.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
       traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.auth: proxy
       traefik.http.middlewares.subsonicauth-sub2basic.plugin.subsonic-basicauth.header: Authorization
@@ -108,7 +115,6 @@ services:
       AUTHELIA_NOTIFIER_SMTP_SENDER: ${SYSTEM_MAIL_SENDER_NAME} <${SYSTEM_MAIL_SENDER_ADDR}>
       AUTHELIA_NOTIFIER_SMTP_USERNAME: ${SMTP_USER}
       AUTHELIA_PASSWORD_POLICY_ZXCVBN_ENABLED: true
-      AUTHELIA_SESSION_DOMAIN: ${DOMAIN}
       AUTHELIA_SESSION_EXPIRATION: 48h
       AUTHELIA_SESSION_INACTIVITY: 8h
       AUTHELIA_SESSION_REDIS_HOST: authelia-cache
@@ -116,11 +122,15 @@ services:
       AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
       AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/authelia-storage-encryption-key
       AUTHELIA_STORAGE_LOCAL_PATH: /config/storage.sqlite3
+      AUTHELIA_TOTP_ISSUER: ${DOMAIN}
+      PORTAL_URL: https://auth.${DOMAIN}
+      DOMAIN: ${DOMAIN}
     volumes:
       - authelia-config:/config
     secrets:
       - smtp-pass
       - authelia-access-control.yml
+      - authelia-configuration.yml
       - authelia-jwt-secret
       - authelia-session-secret
       - authelia-storage-encryption-key
@@ -237,8 +247,12 @@ volumes:
   traefik-certs:
 
 secrets:
+  # Some configurations cannot be passed as environment variables, usually
+  # because some values appear in lists.
+  authelia-configuration.yml:
+    file: configs/authelia/configuration.yml
   # Ideally there should be a way to define the ac rules (e.g. required roles)
-  # at the service level using traefik annotations, but there doesn't seem to be
+  # at the service level using docker annotations, but there doesn't seem to be
   # a way to do that currently.
   # On top of that authelia doesn't currently support defining ac rules using
   # environment variables. The only way is to have them in a configuration file
