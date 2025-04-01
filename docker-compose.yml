@@ -192,8 +192,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 1.28.0
-    image: mustash-syncthing:1.28.0
+        syncthing_version: 1.29.4
+    image: mustash-syncthing:1.29.4
     restart: unless-stopped
     user: 1000:1000
     depends_on:

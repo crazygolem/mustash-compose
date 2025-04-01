@@ -34,13 +34,8 @@ ENV STHOMEDIR=/var/syncthing/config
 
 ENTRYPOINT ["/bin/entrypoint.sh", "/syncthing-start"]
 
-# TODO: revert retries and interval to upstream values once --start-interval
-#       gets supported on my server:
-#       → dockerfile syntax 1.6
-#       → buildkit 0.12.0
-#       → docker engine 25.0.0
-#       → compose https://github.com/docker/compose/issues/10830
-HEALTHCHECK --start-period=30s --retries=12 --interval=10s --timeout=5s \
+# Compared to upstream: extra start-period parameter, which is 0 by default
+HEALTHCHECK --start-period=30s --interval=1m --timeout=10s \
     CMD curl -fkLsS -m 2 127.0.0.1:8384/rest/noauth/health | grep -o --color=never OK || exit 1
 
 RUN apk --no-cache add \
