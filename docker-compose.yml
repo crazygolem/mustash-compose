@@ -136,7 +136,7 @@ services:
       - authelia-storage-encryption-key
 
   authelia-cache:
-    image: redis:7.2-alpine
+    image: valkey/valkey:7.2-alpine
     restart: unless-stopped
     volumes:
       - authelia-cache:/data
