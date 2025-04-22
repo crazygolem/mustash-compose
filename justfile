@@ -277,7 +277,7 @@ versions:
     # Only github repos that publish proper github releases are supported
     declare -A repos=(
         [authelia]=authelia/authelia
-        [authelia-cache]=redis/redis
+        [authelia-cache]=valkey-io/valkey
         [navidrome]=navidrome/navidrome
         [syncthing]=syncthing/syncthing
         [traefik]=traefik/traefik
