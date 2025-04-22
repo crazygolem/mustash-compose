@@ -159,7 +159,7 @@ can access
 
 - Warning in the logs:
   > failed to sufficiently increase receive buffer size (was: 208 kiB, wanted:
-  > 2048 kiB, got: 416 kiB).
+  > 7168 kiB, got: 416 kiB).
   > See https://github.com/lucas-clemente/quic-go/wiki/UDP-Receive-Buffer-Size
   > for details.
 
@@ -170,8 +170,8 @@ can access
   ```conf path=/etc/sysctl.d/mustash-compose.conf
   # Recommended for syncthing
   # See https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
-  net.core.rmem_max=2500000
-  net.core.wmem_max=2500000
+  net.core.rmem_max=7500000
+  net.core.wmem_max=7500000
   ```
 
   And then the command `sysctl --load /etc/sysctl.d/mustash-compose.conf` can be
