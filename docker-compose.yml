@@ -172,10 +172,6 @@ services:
       # email doesn't seem to be used for anything but gravatar (which is
       # disabled), so really the user screen is useless...
       ND_ENABLEUSEREDITING: false
-      # The sharing feature is still under development, and currently does not
-      # implement permissions, giving all users admin-like rights over all
-      # shares.
-      ND_ENABLESHARING: false
       # Regular local backups saved in the data volume. This is meant mostly as
       # a lazy fail-safe, and should be coupled with a more robust backup
       # mechanism. The schedule and retention configuration below is adapted for
@@ -183,6 +179,12 @@ services:
       ND_BACKUP_PATH: /data/backups
       ND_BACKUP_SCHEDULE: 0 5 ? * 1
       ND_BACKUP_COUNT: 4
+      # The sharing feature is still under development, and currently does not
+      # implement permissions, giving all users admin-like rights over all
+      # shares.
+      ND_ENABLESHARING: false
+      # Various other adjustments that are not relevant to integration.
+      ND_DEFAULTPLAYLISTPUBLICVISIBILITY: true
     volumes:
       - navidrome-data:/data
       - navidrome-cache:/data/cache
