@@ -142,7 +142,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.54.4
+    image: deluan/navidrome:0.56.1
     restart: unless-stopped
     user: 1000:1000
     depends_on:

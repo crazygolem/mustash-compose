@@ -158,11 +158,19 @@ list-users:
         '
     } | column -t -s $'\t'
 
-# Backup project volumes
-backup:
+# Backup project volumes. Use -n to not restart services.
+backup *opts:
     #!/bin/bash
 
     set -eo pipefail
+
+    while getopts 'n' opt; do
+        case "$opt" in
+            \?) exit 1 ;;
+            n) norestart=1 ;;
+        esac
+    done
+    shift $((OPTIND-1))
 
     vlabel() {
         local volume="${1:?}"
@@ -219,7 +227,7 @@ backup:
         --volume ./backups/:/archive/ \
         "${volumes[@]}" \
         offen/docker-volume-backup:v2
-    just dc start
+    (( norestart )) || just dc start
 
 
 # DEV ZONE ### DANGEROUS COMMANDS AHEAD ########################################
