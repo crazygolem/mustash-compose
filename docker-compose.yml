@@ -185,6 +185,15 @@ services:
       ND_ENABLESHARING: false
       # Various other adjustments that are not relevant to integration.
       ND_DEFAULTPLAYLISTPUBLICVISIBILITY: true
+      # Navidrome's default mapping for the YEAR tag (and equivalents) is a bit
+      # inconsistent (mapped to recordingdate or releasedate depending on the
+      # file format), and more importantly not in the same way as my main music
+      # library manager. I am also using this tag inconsistently (sometimes as
+      # recording and other times as release date). All this can lead to albums
+      # being incorrectly split by navidrome in some situations when the date is
+      # taken into account for identifying albums.
+      # This is the default configuration without the `releasedate` attribute.
+      ND_PID_ALBUM: musicbrainz_albumid|albumartistid,album,albumversion
     volumes:
       - navidrome-data:/data
       - navidrome-cache:/data/cache
