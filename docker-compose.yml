@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.3.6
+    image: traefik:v3.4.4
     restart: unless-stopped
     command:
       - --providers.docker=true
@@ -64,7 +64,7 @@ services:
       - traefik-tls.yml
 
   authelia:
-    image: authelia/authelia:4.39.1
+    image: authelia/authelia:4.39.5
     restart: unless-stopped
     user: 1000:1000
     command:
@@ -209,8 +209,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 1.29.5
-    image: mustash-syncthing:1.29.5
+        syncthing_version: 1.30.0
+    image: mustash-syncthing:1.30.0
     restart: unless-stopped
     user: 1000:1000
     depends_on:
