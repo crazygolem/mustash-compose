@@ -142,7 +142,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.56.1
+    image: deluan/navidrome:0.57.0
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -179,6 +179,12 @@ services:
       ND_BACKUP_PATH: /data/backups
       ND_BACKUP_SCHEDULE: 0 5 ? * 1
       ND_BACKUP_COUNT: 4
+      # The feature is disabled to prevent accidentally leaking sensitive config
+      # values: The current implementation uses a blacklist to redact those
+      # values (and long values still have some of their content shown), and
+      # expects every developer to remember to add their new sensitive option to
+      # the list, or reviewers to catch it before it's too late.
+      ND_DEVUISHOWCONFIG: false
       # The sharing feature is still under development, and currently does not
       # implement permissions, giving all users admin-like rights over all
       # shares.
