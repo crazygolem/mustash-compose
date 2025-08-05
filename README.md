@@ -60,16 +60,12 @@ in the file.
 
 Then create the various other configs and secrets:
 
-1. The access control configuration for authelia:
-
-       just update-from-template configs/authelia/access-control.yml
-
-2. The persistent random secrets: you can use `pwgen -s 64 1` to generate random
-   strings and copy them into the following files (each should contain a
-   different random string):
-   - secrets/authelia/jwt-secret
-   - secrets/authelia/session-secret
-   - secrets/authelia/storage-encryption-key
+Then create the various persistent random secrets: you can use `pwgen -s 64 1`
+to generate random strings and copy them into the following files (each should
+contain a different random string):
+- secrets/authelia/jwt-secret
+- secrets/authelia/session-secret
+- secrets/authelia/storage-encryption-key
 
    Note that for technical reasons the `navidrome-wtf` secret cannot be provided
    as a file, and instead you have to set the `NAVIDROME_WTF` variable in the

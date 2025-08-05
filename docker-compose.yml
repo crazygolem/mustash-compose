@@ -15,7 +15,7 @@ services:
       - --entrypoints.https.http.middlewares=drop-auth-headers@docker,hsts-headers@file
       # Currently the default TLS configuration can only be set through the file
       # provider, cf. https://github.com/traefik/traefik/issues/5507
-      - --providers.file.filename=/run/secrets/traefik-tls.yml
+      - --providers.file.filename=/run/configs/tls.yml
 
       # Default cert resolver, required even if only one is configured. This
       # parameter avoids having to configure the resolver on every service.
@@ -60,22 +60,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certs:/certs
-    secrets:
-      - traefik-tls.yml
+    configs:
+      - source: traefik-tls.yml
+        target: /run/configs/tls.yml
 
   authelia:
     image: authelia/authelia:4.39.5
     restart: unless-stopped
     user: 1000:1000
-    command:
-      # The entrypoint is a bit weird, and does different things depending on
-      # whether the first parameter is `--config` and the user it is run as.
-      # If you change something here, better check the entrypoint to make sure
-      # it does what you expect.
-      - authelia
-      - --config.experimental.filters=template
-      - --config=/run/secrets/authelia-access-control.yml
-      - --config=/run/secrets/authelia-configuration.yml
     depends_on:
       authelia-cache:
         condition: service_started
@@ -104,6 +96,8 @@ services:
       disable: true
     environment:
       TZ: Europe/Zurich
+      X_AUTHELIA_CONFIG_FILTERS: template
+      X_AUTHELIA_CONFIG: /run/configs/
       # If the file does not exist, authelia outputs an error, generates the
       # file and then exits. After it restarts the service then works fine.
       AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH: /config/users.yml
@@ -127,10 +121,13 @@ services:
       DOMAIN: ${DOMAIN}
     volumes:
       - authelia-config:/config
+    configs:
+      - source: authelia-configuration.yml
+        target: /run/configs/configuration.yml
+      - source: authelia-access-control.yml
+        target: /run/configs/access-control.yml
     secrets:
       - smtp-pass
-      - authelia-access-control.yml
-      - authelia-configuration.yml
       - authelia-jwt-secret
       - authelia-session-secret
       - authelia-storage-encryption-key
@@ -264,21 +261,6 @@ volumes:
   traefik-certs:
 
 secrets:
-  # Some configurations cannot be passed as environment variables, usually
-  # because some values appear in lists.
-  authelia-configuration.yml:
-    file: configs/authelia/configuration.yml
-  # Ideally there should be a way to define the ac rules (e.g. required roles)
-  # at the service level using docker annotations, but there doesn't seem to be
-  # a way to do that currently.
-  # On top of that authelia doesn't currently support defining ac rules using
-  # environment variables. The only way is to have them in a configuration file
-  # in the container.
-  # Mounting using secrets instead of a normal bind mount makes it a bit nicer
-  # on the original file on the host (e.g. no ownership change) and allows if
-  # needed to specify a different owner in the container.
-  authelia-access-control.yml:
-    file: configs/authelia/access-control.yml
   # Random, persistent string generated for this environment
   authelia-jwt-secret:
     file: secrets/authelia/jwt-secret
@@ -291,10 +273,96 @@ secrets:
   # Password for the authentication against an external SMTP server
   smtp-pass:
     file: secrets/smtp-pass
-  # Nothing sensitive in there, it's just more convenient to mount it as a
-  # secret, cf. comment on authelia's ac secret.
+
+
+# Some configurations cannot be passed as environment variables (usually because
+# some value contain arbitrary structured data) or labels (because the container
+# does not support reading them). The `config` top-level element allows to pass
+# those configs as file to the containers, while still keeping their content in
+# a single compose file along all the other non-sensitive configs.
+configs:
+
+  # Main authelia configuration. Requires the 'template' config filter to be
+  # enabled.
+  authelia-configuration.yml:
+    content: |
+      server:
+        endpoints:
+          authz:
+            web:
+              implementation: ForwardAuth
+              authn_strategies:
+                - name: CookieSession
+            basic:
+              implementation: ForwardAuth
+              authn_strategies:
+                - name: HeaderAuthorization
+                  schemes: [ Basic ]
+      session:
+        cookies:
+          - domain: '{{ env "DOMAIN" }}'
+            authelia_url: '{{ env "PORTAL_URL" }}'
+
+  # Service-dependent config for authelia.
+  # Ideally there should be a way to define the ac rules (e.g. required roles)
+  # at the service level using docker annotations, but there doesn't seem to be
+  # a way to do that currently.
+  # https://github.com/authelia/authelia/discussions/5023
+  authelia-access-control.yml:
+    content: |
+      access_control:
+        default_policy: deny
+        rules:
+          - domain:
+              - music.{{ env "DOMAIN" }}
+            resources:
+              # Non-sensitive assets from navidrome repo's ui/public/ directory.
+              # If manifest.webmanifest and the assets it references are not
+              # listed here, navidrome cannot be properly installed as a PWA.
+              - '/favicon\.ico$'
+              - '/robots\.txt$'
+              - '^/app/android-chrome(-\d+x\d+)?\.png$'
+              - '^/app/apple-touch-icon(-\d+x\d+)?\.png$'
+              - '^/app/favicon(-\d+x\d+)?\.png$'
+              - '^/app/manifest\.webmanifest$'
+              - '^/app/safari-pinned-tab\.svg$'
+              # Public shares endpoint. If public shares are not enabled,
+              # navidrome will reject the requests itself.
+              - '^/share/'
+            policy: bypass
+          - domain:
+              - music.{{ env "DOMAIN" }}
+            subject:
+              - [ group:user ]
+            policy: one_factor
+          - domain:
+              - syncthing.{{ env "DOMAIN" }}
+            subject:
+              - [ group:admin ]
+            policy: two_factor
+
   traefik-tls.yml:
-    file: configs/traefik/tls.yml
+    content: |
+      tls:
+        options:
+          default:
+            sniStrict: true
+            minVersion: VersionTLS12
+            cipherSuites:
+              # From Mozilla's SSL Configuration Generator, intermediate settings
+              # https://ssl-config.mozilla.org
+              - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+              - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+              - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+              - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+              - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+              - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+      http:
+        middlewares:
+          hsts-headers:
+            headers:
+              stsSeconds: 15552000
+              stsIncludeSubdomains: true
 
 
 # NOTE ON THE ACME TLS-ALPN-01 CHALLENGE
