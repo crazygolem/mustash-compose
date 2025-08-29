@@ -243,6 +243,8 @@ services:
     build:
       context: images/user-volumes
     volumes:
+      - authelia-cache:/mnt/authelia-cache
+      - authelia-config:/mnt/authelia-config
       - navidrome-cache:/mnt/navidrome-cache
       - navidrome-data:/mnt/navidrome-data
       - syncthing-config:/mnt/syncthing-config
