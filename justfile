@@ -6,7 +6,7 @@ set dotenv-load
     just --list
 
 # Execute arbitratry docker compose commands
-@dc +args:
+@dc *args:
     docker compose "$@"
 
 # Save at least three keystrokes

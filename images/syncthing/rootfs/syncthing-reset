@@ -150,16 +150,18 @@ initargs=(
     --no-browser
     --no-restart                    # Managed by docker-compose
     --no-upgrade                    # Upgrade the docker image instead
-
-    --skip-port-probing
-    --no-default-folder
+    --no-port-probing
 )
 
 # Start an instance that will be used to modify its own configuration
 syncthing serve "${initargs[@]}" &
 
 # Allow some time for the server to be ready
-stcli config version get >/dev/null 2>&1
+until out="$(curl -sS "$STGUIADDRESS"/rest/noauth/health 2>&1)" \
+    && [[ ! "$out" =~ "Database migration in progress" ]]; do
+    sleep 0.3
+done
+stcli config version get >/dev/null # Sanity-check (should not get stuck)
 
 config <<EOF
 # Overwrites the default "default" value; we want "default" but with custom
