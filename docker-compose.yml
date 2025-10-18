@@ -189,6 +189,7 @@ services:
       ND_ENABLESHARING: false
       # Various other adjustments that are not relevant to integration.
       ND_DEFAULTPLAYLISTPUBLICVISIBILITY: true
+      ND_SCANNER_PURGEMISSING: always
       # Navidrome's default mapping for the YEAR tag (and equivalents) is a bit
       # inconsistent (mapped to recordingdate or releasedate depending on the
       # file format), and more importantly not in the same way as my main music
