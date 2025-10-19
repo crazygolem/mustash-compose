@@ -77,7 +77,7 @@ _navidrome-add-user login name:
     id="$(
         just dc exec navidrome wget -qO - \
             --header "Remote-User: ${ADMIN_USER}" \
-            http://localhost:4533/api/user?user_name="${1:?Missing login}" \
+            http://127.0.0.1:4533/api/user?user_name="${1:?Missing login}" \
         | jq -r '.[0].id // empty'
     )"
 
@@ -90,7 +90,7 @@ _navidrome-add-user login name:
         --header 'content-type: application/json' \
         --header "remote-user: ${ADMIN_USER}" \
         --post-data '{"isAdmin":false,"userName":"'"$1"'","name":"'"$2"'","password":"'"$(pwgen -s 64 1)"'"}' \
-        http://localhost:4533/api/user
+        http://127.0.0.1:4533/api/user
 
 
 # Delete a user from authelia and navidrome
@@ -119,7 +119,7 @@ _navidrome-delete-user login:
     id="$(
         just dc exec navidrome wget -qO - \
             --header "Remote-User: ${ADMIN_USER}" \
-            http://localhost:4533/api/user?user_name="${1:?Missing login}" \
+            http://127.0.0.1:4533/api/user?user_name="${1:?Missing login}" \
         | jq -r '.[0].id // empty'
     )"
 
@@ -131,10 +131,19 @@ _navidrome-delete-user login:
     # Busybox' wget doesn't support the DELETE method
     just dc exec navidrome sh -c '
         {
-            echo DELETE /api/user/"$1" HTTP/1.0
-            echo Remote-User: "$2"
-            echo
-        } | nc localhost 4533 | { grep -F "HTTP/1.0 200 OK" >/dev/null || exit 1; }
+            printf %s\\r\\n \
+                "DELETE /api/user/$1 HTTP/1.0" \
+                "Host: 127.0.0.1:4533" \
+                "Remote-User: $2" \
+                ""
+
+            # Prevents nc from closing the connection too early, which would
+            # trigger a context cancellation on navidrome, in turn returning
+            # early usually with a confusing "Not Authenticated" error.
+            sleep 1s
+        } \
+        | nc -n 127.0.0.1 4533 \
+        | { grep -F "HTTP/1.0 200 OK" >/dev/null || exit 1; }
     ' - "$id" "${ADMIN_USER}"
 
 
@@ -261,7 +270,7 @@ bootstrap: (_danger "This will rebuild the local images and reset the admin user
     just _authelia-set-user-groups "${ADMIN_USER}" user admin
     just dc exec navidrome wget -qO /dev/null \
         --post-data '{"username":"'"${ADMIN_USER}"'","password":"'"$(pwgen -s 64 1)"'"}' \
-        http://localhost:4533/auth/createAdmin
+        http://127.0.0.1:4533/auth/createAdmin
     just dc stop authelia navidrome
     just up
 
