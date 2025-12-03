@@ -154,7 +154,10 @@ services:
       traefik.http.routers.navidrome.rule: Host(`music.${DOMAIN}`)
       traefik.http.routers.navidrome.entrypoints: https
       traefik.http.routers.navidrome.middlewares: authelia@docker
-      traefik.http.routers.navidrome-subsonic.rule: Host(`music.${DOMAIN}`) && PathPrefix(`/rest/`) && !Query(`c`, `NavidromeUI`)
+      traefik.http.routers.navidrome-subsonic.rule:
+        Host(`music.${DOMAIN}`) && PathPrefix(`/rest/`)
+        && !Query(`c`, `NavidromeUI`)
+        && !Path(`/rest/getOpenSubsonicExtensions`)
       traefik.http.routers.navidrome-subsonic.entrypoints: https
       traefik.http.routers.navidrome-subsonic.middlewares: authelia-subsonicauth@docker
     environment:
@@ -330,6 +333,9 @@ configs:
               - '^/app/favicon(-\d+x\d+)?\.png$'
               - '^/app/manifest\.webmanifest$'
               - '^/app/safari-pinned-tab\.svg$'
+              # Public OpenSubsonic endpoint. Other Subsonic endpoints must be
+              # protected.
+              - '^/rest/getOpenSubsonicExtensions(\?.*)?$'
               # Public shares endpoint. If public shares are not enabled,
               # navidrome will reject the requests itself.
               - '^/share/'
