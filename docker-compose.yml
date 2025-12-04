@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.5.3
+    image: traefik:v3.6.2
     restart: unless-stopped
     command:
       - --providers.docker=true
@@ -65,7 +65,7 @@ services:
         target: /run/configs/tls.yml
 
   authelia:
-    image: authelia/authelia:4.39.13
+    image: authelia/authelia:4.39.15
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -140,7 +140,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.58.0
+    image: deluan/navidrome:0.58.5
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -211,8 +211,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 2.0.10
-    image: mustash-syncthing:2.0.10
+        syncthing_version: 2.0.12
+    image: mustash-syncthing:2.0.12
     restart: unless-stopped
     user: 1000:1000
     depends_on:
