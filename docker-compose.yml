@@ -140,7 +140,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.58.5
+    image: deluan/navidrome:0.59.0
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -162,7 +162,7 @@ services:
       # an IP range, so we must trust all IPs. This means that any other service
       # in the same docker network can make a request to navidrome, and easily
       # impersonate an admin.
-      ND_REVERSEPROXYWHITELIST: 0.0.0.0/0
+      ND_EXTAUTH_TRUSTEDSOURCES: 0.0.0.0/0
       # Listen kids, don't passwords like navidrome 🙄
       ND_PASSWORDENCRYPTIONKEY: ${NAVIDROME_WTF}
       # Authentication is fully delegated to traefik/authelia (even for subsonic
