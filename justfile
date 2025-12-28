@@ -116,35 +116,17 @@ _navidrome-delete-user login:
 
     set -eo pipefail
 
-    id="$(
-        just dc exec navidrome wget -qO - \
-            --header "Remote-User: ${ADMIN_USER}" \
-            http://127.0.0.1:4533/api/user?user_name="${1:?Missing login}" \
-        | jq -r '.[0].id // empty'
-    )"
-
-    if [ -z "$id" ]; then
+    if ! {
+        just dc exec navidrome /app/navidrome --nobanner 2>/dev/null \
+            user list -f json \
+        | jq --exit-status --arg username "${1:?}" >/dev/null \
+            'map(select(.username == $username)) | length == 1'
+    }; then
         echo "User does not exist"
         exit 0
     fi
 
-    # Busybox' wget doesn't support the DELETE method
-    just dc exec navidrome sh -c '
-        {
-            printf %s\\r\\n \
-                "DELETE /api/user/$1 HTTP/1.0" \
-                "Host: 127.0.0.1:4533" \
-                "Remote-User: $2" \
-                ""
-
-            # Prevents nc from closing the connection too early, which would
-            # trigger a context cancellation on navidrome, in turn returning
-            # early usually with a confusing "Not Authenticated" error.
-            sleep 1s
-        } \
-        | nc -n 127.0.0.1 4533 \
-        | { grep -F "HTTP/1.0 200 OK" >/dev/null || exit 1; }
-    ' - "$id" "${ADMIN_USER}"
+    just dc exec navidrome /app/navidrome --nobanner user delete --user "${1:?}"
 
 
 # List the users managed by authelia
