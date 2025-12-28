@@ -27,8 +27,9 @@ _authelia-add-user login email name:
     set -eo pipefail
 
     pwd="$(
-        just dc exec authelia authelia hash-password "$(pwgen -s 64 1)" \
-        | sed 's/^[^$]*//'
+        just dc exec authelia \
+            authelia crypto hash generate argon2 --random \
+        | grep -E ^Digest: | sed 's/^[^$]*//'
     )"
 
     just dc exec authelia cat /config/users.yml \
