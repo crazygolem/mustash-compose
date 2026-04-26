@@ -140,7 +140,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.60.3
+    image: deluan/navidrome:0.61.2
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -163,6 +163,7 @@ services:
       # in the same docker network can make a request to navidrome, and easily
       # impersonate an admin.
       ND_EXTAUTH_TRUSTEDSOURCES: 0.0.0.0/0
+      ND_EXTAUTH_LOGOUTURL: https://auth.${DOMAIN}/logout
       # Listen kids, don't passwords like navidrome 🙄
       ND_PASSWORDENCRYPTIONKEY: ${NAVIDROME_WTF}
       # Authentication is fully delegated to traefik/authelia (even for subsonic
