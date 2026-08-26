@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.7.5
+    image: traefik:v3.7.12
     restart: unless-stopped
     command:
       - --providers.docker=true
@@ -53,7 +53,7 @@ services:
       # THE AUTHORS OF- AND CONTRIBUTORS TO THIS COMPOSE FILE DECLINE ALL
       # RESPONSIBILITY FOR YOUR USE OF THIS PLUGIN.
       - --experimental.plugins.subsonic-basicauth.modulename=github.com/crazygolem/traefik-subsonic-basicauth
-      - --experimental.plugins.subsonic-basicauth.version=v0.2.0
+      - --experimental.plugins.subsonic-basicauth.version=v0.2.1
     ports:
       - 80:80
       - 443:443
@@ -140,7 +140,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.62.0
+    image: deluan/navidrome:0.63.2
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -209,8 +209,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 2.1.1
-    image: mustash-syncthing:2.1.1
+        syncthing_version: 2.1.3
+    image: mustash-syncthing:2.1.3
     restart: unless-stopped
     user: 1000:1000
     depends_on:
