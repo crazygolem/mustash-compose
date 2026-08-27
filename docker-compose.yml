@@ -3,8 +3,12 @@ services:
   traefik:
     image: traefik:v3.7.12
     restart: unless-stopped
+    depends_on:
+      docker-proxy:
+        condition: service_started
     command:
       - --providers.docker=true
+      - --providers.docker.endpoint=tcp://docker-proxy:2375
       - --providers.docker.exposedbydefault=false
       - --entrypoints.http.address=:80
       - --entrypoints.https.address=:443
@@ -55,14 +59,19 @@ services:
       - --experimental.plugins.subsonic-basicauth.modulename=github.com/crazygolem/traefik-subsonic-basicauth
       - --experimental.plugins.subsonic-basicauth.version=v0.2.1
     networks:
+      - dproxy-traefik
       - authelia
       - navidrome
       - syncthing
     ports:
       - 80:80
       - 443:443
+    labels:
+      dproxy.allow.get.default:     (/v[\d.]+)?/(_ping|version|events)
+      dproxy.allow.head.default:    (/v[\d.]+)?/_ping
+      dproxy.allow.get.containers:  (/v[\d.]+)?/(containers/json|containers/[0-9a-f]{64}/json)
+      dproxy.allow.get.networks:    (/v[\d.]+)?/(networks|networks/[0-9a-f]{64})
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certs:/certs
     configs:
       - source: traefik-tls.yml
@@ -266,6 +275,27 @@ services:
       - navidrome-data:/mnt/navidrome-data
       - syncthing-config:/mnt/syncthing-config
 
+  docker-proxy:
+    image: wollomatic/socket-proxy:1.13.1
+    restart: unless-stopped
+    user: 65534:118 # nobody:docker
+    command:
+      - -listenip=0.0.0.0
+      - -proxycontainername=docker-proxy
+      - -watchdoginterval=60
+      - -stoponwatchdog
+      - -dockerlabelprefix=dproxy
+    networks:
+      - dproxy-traefik
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    mem_limit: 64M
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
 
 volumes:
   authelia-cache:
@@ -409,12 +439,22 @@ configs:
 # used for most services (i.e., if one service gets compromised, the 2-tier
 # architecture makes it too easy to forge an authenticated request against
 # another service) which the 2-tier architecture wouldn't do.
+#
+# An independent, orthogonal network layer serves the docker socket proxy: each
+# already-isolated service group (i.e. a service and its backends; splitting it
+# further wouldn't add any isolation) needing docker.sock access gets a
+# dedicated network to the socket proxy. Note that even in an isolated group,
+# only the services actually needing docker.sock access should be attached to
+# the group's docker-proxy network.
 networks:
   authelia:
   authelia-be:
     internal: true
   navidrome:
   syncthing:
+  # All dproxy networks should be internal
+  dproxy-traefik:
+    internal: true
   # The default network should not be used; instead `network_mode: none` should
   # be set on services that don't need network access. The default network is
   # configured as internal as a mitigation in case one forgets to set
