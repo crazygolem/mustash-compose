@@ -54,6 +54,10 @@ services:
       # RESPONSIBILITY FOR YOUR USE OF THIS PLUGIN.
       - --experimental.plugins.subsonic-basicauth.modulename=github.com/crazygolem/traefik-subsonic-basicauth
       - --experimental.plugins.subsonic-basicauth.version=v0.2.1
+    networks:
+      - authelia
+      - navidrome
+      - syncthing
     ports:
       - 80:80
       - 443:443
@@ -71,6 +75,9 @@ services:
     depends_on:
       authelia-cache:
         condition: service_started
+    networks:
+      - authelia
+      - authelia-be
     expose:
       - 9091
     labels:
@@ -136,6 +143,8 @@ services:
     image: valkey/valkey:9.1-alpine
     restart: unless-stopped
     user: 1000:1000
+    networks:
+      - authelia-be
     volumes:
       - authelia-cache:/data
 
@@ -147,6 +156,8 @@ services:
       # Only actually needed when deploying from scratch, but what you gonna do
       user-volumes:
         condition: service_completed_successfully
+    networks:
+      - navidrome
     expose:
       - 4533
     labels:
@@ -218,6 +229,8 @@ services:
       # directory, not the actual config directory below it.
       user-volumes:
         condition: service_completed_successfully
+    networks:
+      - syncthing
     expose:
       - 8384 # Web UI, through traefik
     labels:
@@ -245,6 +258,7 @@ services:
   user-volumes:
     build:
       context: images/user-volumes
+    network_mode: none
     volumes:
       - authelia-cache:/mnt/authelia-cache
       - authelia-config:/mnt/authelia-config
@@ -374,6 +388,39 @@ configs:
               stsSeconds: 15552000
               stsIncludeSubdomains: true
 
+# The network follows a 3-tier architecture (edge, service and backend
+# networks), where services can't communicate between each others.
+#
+#                    (internet)
+#                        │
+#                     traefik
+#         ┌──────────────┼──────────────┐
+#     (svc1-net)     (svc2-net)     (svc3-net)
+#         │              │              │
+#       svc1           svc2           svc3
+#         │                             |
+#   (svc1-be-net)                 (svc3-be-net)
+#         │                        ┌────┴────┐
+#      svc1-db                  svc3-db   svc3-api
+#
+# This is less flexible than a 2-tier architecture (proxy and backend networks)
+# as the ingress must be explicitly updated for each new service joining the
+# deployment, but compensates for the weak header-based authentication mechanism
+# used for most services (i.e., if one service gets compromised, the 2-tier
+# architecture makes it too easy to forge an authenticated request against
+# another service) which the 2-tier architecture wouldn't do.
+networks:
+  authelia:
+  authelia-be:
+    internal: true
+  navidrome:
+  syncthing:
+  # The default network should not be used; instead `network_mode: none` should
+  # be set on services that don't need network access. The default network is
+  # configured as internal as a mitigation in case one forgets to set
+  # `network_mode` on a service.
+  default:
+    internal: true
 
 # NOTE ON THE ACME TLS-ALPN-01 CHALLENGE
 #
