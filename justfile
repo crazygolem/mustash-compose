@@ -278,6 +278,7 @@ versions:
     declare -A repos=(
         [authelia]=authelia/authelia
         [authelia-cache]=valkey-io/valkey
+        [docker-proxy]=wollomatic/socket-proxy
         [navidrome]=navidrome/navidrome
         [syncthing]=syncthing/syncthing
         [traefik]=traefik/traefik
