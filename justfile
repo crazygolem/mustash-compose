@@ -269,38 +269,122 @@ update-from-template dst tpl='':
     envsubst <"${2:-${1}.template}" >"$1"
     EOF
 
-# Compare running and latest released versions of select services
+# Compare running and latest released versions of the services
 versions:
     #!/bin/bash
-    set -eo pipefail
+    set -euo pipefail
 
-    # Only github repos that publish proper github releases are supported
-    declare -A repos=(
-        [authelia]=authelia/authelia
-        [authelia-cache]=valkey-io/valkey
-        [docker-proxy]=wollomatic/socket-proxy
-        [navidrome]=navidrome/navidrome
-        [syncthing]=syncthing/syncthing
-        [traefik]=traefik/traefik
-    )
+    # Compares the upstream version of every service against the newest semver
+    # tag published in its registry.
+    #
+    # Services whose image is pulled directly are read from `image`.
+    # Services built locally must declare what they are built from via the
+    # `x-upstream.repo` and `x-upstream.version` attributes:
+    #
+    #   syncthing:
+    #     build:
+    #       context: images/syncthing
+    #       args:
+    #         syncthing_version: &syncthing_version 2.1.3
+    #     image: mustash-syncthing:2.1.3
+    #     pull_policy: build
+    #     x-upstream:
+    #       repo: syncthing/syncthing
+    #       version: *syncthing_version
+    #
+    # Locally built services without an `x-upstream` are skipped. If the local
+    # tag and `x-upstream.version` disagree, the row is flagged (the anchor
+    # cannot be spliced into the `image` string, so that literal is duplicated
+    # and can drift).
+
+    # Registry lookups are network-bound rather than CPU-bound, so this is a
+    # count of concurrent connections, not of cores. Set to 1 for debugging.
+    JOBS=${JOBS:-8}
+
+
+    norm() {
+        case $1 in
+            localhost/*)   printf '%s\n' "$1" ;;
+            *.*/* | *:*/*) printf '%s\n' "$1" ;;
+            */*)           printf 'docker.io/%s\n' "$1" ;;
+            *)             printf 'docker.io/library/%s\n' "$1" ;;
+        esac
+    }
+
+    services() {
+        # dc's `config --format json` does not output the x-* attributes
+        just dc config --format yaml | yq -o json | jq -r '
+            .services
+            | to_entries[]
+            | .key as $svc
+            | .value as $s
+            | ($s["x-upstream"]) as $up
+            | (
+                if $up then "\($up.repo):\($up.version)"
+                elif $s.build then null
+                else $s.image end
+            ) as $ref
+            | select($ref)
+            | (
+                if $up and ($s.image | split(":") | last) != ($up.version | tostring)
+                then "inconsistent tag/x-upstream"
+                else "" end
+            ) as $note
+            | [$svc, $ref, $note] | @tsv
+        ' | sort
+    }
+
+
+    latest_tag() {
+        jq -r --arg semver '^v?[0-9]+\.[0-9]+\.[0-9]+$' '
+            [ .Tags[]
+            | select(test($semver))
+            | {
+                tag: .,
+                key: (ltrimstr("v") | split(".") | map(tonumber))
+            }
+            ]
+            | sort_by(.key)
+            | last
+            | .tag // empty
+        '
+    }
+
+
+    # Takes one TSV row from services() and emits one TSV row of output. Runs in
+    # a separate process per service, so the result is written with a single
+    # printf to keep the write atomic and prevent rows from interleaving into
+    # each others.
+    check() {
+        local svc ref note repo current tags latest
+        IFS=$'\t' read -r svc ref note <<<"$1"
+
+        case "${ref##*/}" in
+            *:*) repo="${ref%:*}"; current="${ref##*:}" ;;
+            *)   repo="$ref";      current=latest       ;;
+        esac
+
+        # Docker Hub answers "denied" for repositories that do not exist as well
+        # as for ones you cannot see. Keep the message and carry on instead of
+        # losing every remaining row (due to errexit option).
+        if ! tags=$(skopeo list-tags "docker://$(norm "$repo")" 2>&1); then
+            printf '%s\t%s\t%s\t%s\n' "$svc" "$current" '-' "ERROR: ${tags##*: }"
+            return 0
+        fi
+
+        latest=$(latest_tag <<<"$tags")
+
+        printf '%s\t%s\t%s\t%s\n' "$svc" "${current#v}" "${latest#v}" "$note"
+    }
+
+    export -f check norm latest_tag
 
     {
         printf '%s\t%s\t%s\n' SERVICE RUNNING AVAILABLE
-        for svc in $(printf '%s\n' "${!repos[@]}" | sort); do
-            printf '%s\t%s\t%s\n' \
-                "$svc" \
-                "$(
-                    just dc images "$svc" | tail -n -1 \
-                    | awk '{print $3}' \
-                    | sed 's/^v//' | sed 's/-.*$//'
-                )" \
-                "$(
-                    # BEWARE OF THE LOW RATE LIMITS
-                    # See https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limit-http-headers
-                    curl -sSL "https://api.github.com/repos/${repos[$svc]}/releases/latest" \
-                    | jq -r .tag_name | sed 's/^v//'
-                )"
-        done
+
+        services \
+        | xargs -P "$JOBS" -d '\n' -n 1 bash -c 'check "$1"' - \
+        | sort
     } | column -t -s $'\t'
 
 # Extra check for dangerous commands

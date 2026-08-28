@@ -229,8 +229,11 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: 2.1.3
+        syncthing_version: &syncthing_version 2.1.3
     image: mustash-syncthing:2.1.3
+    x-upstream:
+      repo: syncthing/syncthing
+      version: *syncthing_version
     restart: unless-stopped
     user: 1000:1000
     depends_on:
