@@ -115,20 +115,6 @@ can access
 
 # Work notes
 
-## Docker Compose
-
-- TODO: Isolate services, they should generally only be reachable through the
-  traefik reverse proxy, and should not be able to communicate directly with
-  each others (e.g. it should not be possible to make a REST request from
-  syncthing to navidrome).
-
-## Traefik
-
-- TLS configuration (`sniStrict` to prevent serving unmanaged domains with a
-  self-signed cert, min TLS version, ...) cannot be done currently with labels
-  or through CLI args.
-  https://github.com/traefik/traefik/issues/5507
-
 ## Navidrome
 
 - Using auth proxy, users are not automatically created.
@@ -137,11 +123,6 @@ can access
   It looks like not everything is correctly reset (e.g. user's name).
   Maybe a session cookie issue?
   Some things do change, e.g. users admin -> user's admin.
-- Auto-imported playlists cannot be set to public by default
-  https://github.com/navidrome/navidrome/issues/1365
-
-- TODO: Auth passthrough for /rest path, for subsonic clients
-  → Only when app tokens get implemented, the web app is good enough until then
 
 ## Syncthing
 
