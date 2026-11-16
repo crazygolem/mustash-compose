@@ -57,7 +57,7 @@ services:
       # THE AUTHORS OF- AND CONTRIBUTORS TO THIS COMPOSE FILE DECLINE ALL
       # RESPONSIBILITY FOR YOUR USE OF THIS PLUGIN.
       - --experimental.plugins.subsonic-basicauth.modulename=github.com/crazygolem/traefik-subsonic-basicauth
-      - --experimental.plugins.subsonic-basicauth.version=v0.2.1
+      - --experimental.plugins.subsonic-basicauth.version=v0.3.0
     networks:
       - dproxy-traefik
       - authelia
