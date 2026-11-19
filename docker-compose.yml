@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.7.12
+    image: traefik:v3.7.19
     restart: unless-stopped
     depends_on:
       docker-proxy:
@@ -17,6 +17,7 @@ services:
       # The auth headers get dropped even when the auth middleware is not mapped
       # so malicious clients cannot peddle them to misconfigured services
       - --entrypoints.https.http.middlewares=drop-auth-headers@docker,hsts-headers@file
+      - --global.aliasHeadersStrategy=delete
       # Currently the default TLS configuration can only be set through the file
       # provider, cf. https://github.com/traefik/traefik/issues/5507
       - --providers.file.filename=/run/configs/tls.yml
@@ -78,7 +79,7 @@ services:
         target: /run/configs/tls.yml
 
   authelia:
-    image: authelia/authelia:4.39.20
+    image: authelia/authelia:4.39.28
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -149,7 +150,7 @@ services:
       - authelia-storage-encryption-key
 
   authelia-cache:
-    image: valkey/valkey:9.1-alpine
+    image: valkey/valkey:9.2-alpine
     restart: unless-stopped
     user: 1000:1000
     networks:
@@ -158,7 +159,7 @@ services:
       - authelia-cache:/data
 
   navidrome:
-    image: deluan/navidrome:0.63.2
+    image: deluan/navidrome:0.64.2
     restart: unless-stopped
     user: 1000:1000
     depends_on:
@@ -229,8 +230,8 @@ services:
     build:
       context: images/syncthing
       args:
-        syncthing_version: &syncthing_version 2.1.3
-    image: mustash-syncthing:2.1.3
+        syncthing_version: &syncthing_version 2.1.7
+    image: mustash-syncthing:2.1.7
     x-upstream:
       repo: syncthing/syncthing
       version: *syncthing_version
@@ -279,7 +280,7 @@ services:
       - syncthing-config:/mnt/syncthing-config
 
   docker-proxy:
-    image: wollomatic/socket-proxy:1.13.1
+    image: wollomatic/socket-proxy:1.13.2
     restart: unless-stopped
     user: 65534:118 # nobody:docker
     command:
